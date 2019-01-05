@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"sync"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -146,39 +147,49 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		return nil, fmt.Errorf("unable to collect join tokens: %v", err)
 	}
 
+	wg := sync.WaitGroup{}
+	wg.Add(len(masterNodeCIDs) + len(workerNodeCIDs))
 	masterAddr := fmt.Sprintf("%s:2377", primaryNodeCID[0:12])
 	// joinMasters
 	for _, cid := range masterNodeCIDs {
-		go execContainer(
-			ctx,
-			hostClient,
-			cid,
-			[]string{
-				"docker",
-				"swarm",
-				"join",
-				"--token",
-				swarmInfo.JoinTokens.Manager,
-				masterAddr,
-			},
-		)
+		go func(cid string) {
+			defer wg.Done()
+			execContainer(
+				ctx,
+				hostClient,
+				cid,
+				[]string{
+					"docker",
+					"swarm",
+					"join",
+					"--token",
+					swarmInfo.JoinTokens.Manager,
+					masterAddr,
+				},
+			)
+		}(cid)
 	}
 	// joinWorkers
 	for _, cid := range workerNodeCIDs {
-		go execContainer(
-			ctx,
-			hostClient,
-			cid,
-			[]string{
-				"docker",
-				"swarm",
-				"join",
-				"--token",
-				swarmInfo.JoinTokens.Worker,
-				masterAddr,
-			},
-		)
+		go func(cid string) {
+			defer wg.Done()
+			execContainer(
+				ctx,
+				hostClient,
+				cid,
+				[]string{
+					"docker",
+					"swarm",
+					"join",
+					"--token",
+					swarmInfo.JoinTokens.Worker,
+					masterAddr,
+				},
+			)
+		}(cid)
 	}
+
+	wg.Wait()
 
 	return &Cluster{
 		networkID:      net.ID,

@@ -32,7 +32,6 @@ func main() {
 	defer func() {
 		deleteCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-
 		cluster.Delete(deleteCtx)
 	}()
 
