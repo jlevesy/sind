@@ -17,9 +17,9 @@ import (
 
 // Errors.
 var (
-	ErrEmptyNetworkName    = errors.New("empty network name")
-	ErrInvalidMastersCount = errors.New("invalid master count, must be >= 1")
-	ErrInvalidWorkerCount  = errors.New("invalid worker count, must be >= 0")
+	ErrEmptyNetworkName     = errors.New("empty network name")
+	ErrInvalidManagersCount = errors.New("invalid manager count, must be >= 1")
+	ErrInvalidWorkerCount   = errors.New("invalid worker count, must be >= 0")
 )
 
 const (
@@ -32,8 +32,8 @@ const (
 type CreateClusterParams struct {
 	NetworkName string
 
-	Masters int
-	Workers int
+	Managers int
+	Workers  int
 
 	ImageName    string
 	PortBindings map[string]string
@@ -44,8 +44,8 @@ func (n *CreateClusterParams) validate() error {
 		return ErrEmptyNetworkName
 	}
 
-	if n.Masters < 1 {
-		return ErrInvalidMastersCount
+	if n.Managers < 1 {
+		return ErrInvalidManagersCount
 	}
 
 	if n.Workers < 0 {
@@ -55,8 +55,8 @@ func (n *CreateClusterParams) validate() error {
 	return nil
 }
 
-func (n *CreateClusterParams) mastersToRun() int {
-	return n.Masters - 1
+func (n *CreateClusterParams) managersToRun() int {
+	return n.Managers - 1
 }
 
 func (n *CreateClusterParams) imageName() string {
@@ -109,16 +109,16 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		return nil, fmt.Errorf("unable to create the primary node: %v", err)
 	}
 
-	masterNodeCIDs, err := runContainers(
+	managerNodeCIDs, err := runContainers(
 		ctx,
 		hostClient,
-		params.mastersToRun(),
+		params.managersToRun(),
 		&container.Config{Image: params.imageName()},
 		&container.HostConfig{Privileged: true},
 		networkConfig(params, net.ID),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create master nodes: %v", err)
+		return nil, fmt.Errorf("unable to create manager nodes: %v", err)
 	}
 
 	workerNodeCIDs, err := runContainers(
@@ -148,10 +148,9 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 	}
 
 	wg := sync.WaitGroup{}
-	wg.Add(len(masterNodeCIDs) + len(workerNodeCIDs))
-	masterAddr := fmt.Sprintf("%s:2377", primaryNodeCID[0:12])
-	// joinMasters
-	for _, cid := range masterNodeCIDs {
+	wg.Add(len(managerNodeCIDs) + len(workerNodeCIDs))
+	managerAddr := fmt.Sprintf("%s:2377", primaryNodeCID[0:12])
+	for _, cid := range managerNodeCIDs {
 		go func(cid string) {
 			defer wg.Done()
 			execContainer(
@@ -164,12 +163,12 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 					"join",
 					"--token",
 					swarmInfo.JoinTokens.Manager,
-					masterAddr,
+					managerAddr,
 				},
 			)
 		}(cid)
 	}
-	// joinWorkers
+
 	for _, cid := range workerNodeCIDs {
 		go func(cid string) {
 			defer wg.Done()
@@ -183,7 +182,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 					"join",
 					"--token",
 					swarmInfo.JoinTokens.Worker,
-					masterAddr,
+					managerAddr,
 				},
 			)
 		}(cid)
@@ -192,12 +191,12 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 	wg.Wait()
 
 	return &Cluster{
-		networkID:      net.ID,
-		primaryNodeCID: primaryNodeCID,
-		masterNodeCIDs: masterNodeCIDs,
-		workerNodeCIDs: workerNodeCIDs,
-		hostClient:     hostClient,
-		swarmClient:    swarmClient,
+		networkID:       net.ID,
+		primaryNodeCID:  primaryNodeCID,
+		managerNodeCIDs: managerNodeCIDs,
+		workerNodeCIDs:  workerNodeCIDs,
+		hostClient:      hostClient,
+		swarmClient:     swarmClient,
 	}, nil
 }
 

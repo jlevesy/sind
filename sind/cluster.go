@@ -8,20 +8,20 @@ import (
 type Cluster struct {
 	networkID string
 
-	primaryNodeCID string
-	masterNodeCIDs []string
-	workerNodeCIDs []string
+	primaryNodeCID  string
+	managerNodeCIDs []string
+	workerNodeCIDs  []string
 
 	hostClient  *docker.Client
 	swarmClient *docker.Client
 }
 
-// Swarm returns the docker client setupd to contact the swarm.
+// Swarm returns the docker client setup to contact the swarm.
 func (c *Cluster) Swarm() *docker.Client {
 	return c.swarmClient
 }
 
 func (c *Cluster) containerIDs() []string {
-	masters := append(c.masterNodeCIDs, c.primaryNodeCID)
-	return append(masters, c.workerNodeCIDs...)
+	managers := append(c.managerNodeCIDs, c.primaryNodeCID)
+	return append(managers, c.workerNodeCIDs...)
 }

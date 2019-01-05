@@ -20,8 +20,8 @@ func main() {
 	params := sind.CreateClusterParams{
 		NetworkName: "swarmynet",
 
-		Masters: 3,
-		Workers: 4,
+		Managers: 3,
+		Workers:  4,
 	}
 
 	cluster, err := sind.CreateCluster(createCtx, params)
