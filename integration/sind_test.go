@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jlevesy/sind/sind"
+	"github.com/jlevesy/go-sind/sind"
 )
 
 func TestSindCanCreateACluster(t *testing.T) {

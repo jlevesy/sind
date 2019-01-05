@@ -1,4 +1,4 @@
-module github.com/jlevesy/sind
+module github.com/jlevesy/go-sind
 
 require (
 	github.com/docker/distribution v2.7.0+incompatible // indirect

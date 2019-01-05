@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jlevesy/sind/sind"
+	"github.com/jlevesy/go-sind/sind"
 )
 
 func main() {
