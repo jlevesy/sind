@@ -34,3 +34,18 @@ func TestSindCanCreateACluster(t *testing.T) {
 		t.Errorf("wrong number of workers created: expected %d, got %d", params.Workers, info.Swarm.Nodes-info.Swarm.Managers)
 	}
 }
+
+func TestSindCanCreateMultipleClusters(t *testing.T) {
+	ctx := context.Background()
+	for i := 0; i < 10; i++ {
+		go func() {
+			params := sind.CreateClusterParams{NetworkName: "test_swarm", Managers: 3, Workers: 3}
+			cluster, err := sind.CreateCluster(ctx, params)
+			if err != nil {
+				t.Fatalf("unable to create cluster: %v", err)
+			}
+
+			defer cluster.Delete(ctx)
+		}()
+	}
+}

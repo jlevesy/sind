@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path"
 	"sync"
 
 	"github.com/docker/docker/api/types"
@@ -20,11 +19,11 @@ var (
 	ErrEmptyNetworkName     = errors.New("empty network name")
 	ErrInvalidManagersCount = errors.New("invalid manager count, must be >= 1")
 	ErrInvalidWorkerCount   = errors.New("invalid worker count, must be >= 0")
+	ErrPrimaryNodeNotBound  = errors.New("primary node is not exposing docker daemon port")
 )
 
 const (
 	dockerDINDimage        = "docker:dind"
-	dockerdTCPListenPort   = "2375"
 	defaultSwarmListenAddr = "0.0.0.0:2377"
 )
 
@@ -70,8 +69,6 @@ func (n *CreateClusterParams) imageName() string {
 func (n *CreateClusterParams) portBindings() nat.PortMap {
 	res := nat.PortMap{}
 
-	res[nat.Port(path.Join(dockerdTCPListenPort, "tcp"))] = []nat.PortBinding{{HostPort: dockerdTCPListenPort}}
-
 	for hostPort, cPort := range n.PortBindings {
 		res[nat.Port(cPort)] = []nat.PortBinding{{HostPort: hostPort}}
 	}
@@ -100,13 +97,24 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		hostClient,
 		&container.Config{Image: params.imageName()},
 		&container.HostConfig{
-			Privileged:   true,
-			PortBindings: params.portBindings(),
+			Privileged:      true,
+			PublishAllPorts: true,
+			PortBindings:    params.portBindings(),
 		},
 		networkConfig(params, net.ID),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create the primary node: %v", err)
+	}
+
+	primaryNodeInfo, err := hostClient.ContainerInspect(ctx, primaryNodeCID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get the primary node informations: %v", err)
+	}
+
+	boundPort, err := dockerDaemonPort(primaryNodeInfo)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get the remote docker daemon port: %v", err)
 	}
 
 	managerNodeCIDs, err := runContainers(
@@ -133,7 +141,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		return nil, fmt.Errorf("unable to create worker nodes: %v", err)
 	}
 
-	swarmClient, err := docker.NewClientWithOpts(docker.WithHost("tcp://localhost:2375"), docker.WithVersion("1.39"))
+	swarmClient, err := docker.NewClientWithOpts(docker.WithHost(fmt.Sprintf("tcp://localhost:%s", boundPort)), docker.WithVersion("1.39"))
 	if err != nil {
 		return nil, fmt.Errorf("unable to create swarm client: %v", err)
 	}
@@ -276,4 +284,17 @@ func networkConfig(params CreateClusterParams, networkID string) *network.Networ
 			},
 		},
 	}
+}
+
+func dockerDaemonPort(container types.ContainerJSON) (string, error) {
+	boundsPorts, ok := container.NetworkSettings.Ports["2375/tcp"]
+	if !ok {
+		return "", ErrPrimaryNodeNotBound
+	}
+
+	if len(boundsPorts) == 0 {
+		return "", ErrPrimaryNodeNotBound
+	}
+
+	return boundsPorts[0].HostPort, nil
 }
