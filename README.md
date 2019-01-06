@@ -20,5 +20,4 @@ Mostly for automated testing.
 ## TODO list
 
 - [ ] CI.
-- [ ] Randomize port binding to ensure that multiple clusters can be started on the same host concurrently.
-- [ ] Make sure that it works on a remote docker host.
+- [ ] Build a cool CLI on top of that like `sind new --worker=4 --managers=3 -p 4999:4999`
