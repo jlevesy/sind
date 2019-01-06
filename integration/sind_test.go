@@ -17,7 +17,7 @@ func TestSindCanCreateACluster(t *testing.T) {
 
 	defer cluster.Delete(ctx)
 
-	info, err := cluster.Swarm().Info(ctx)
+	info, err := cluster.SwarmClient.Info(ctx)
 	if err != nil {
 		t.Fatalf("unable to get swarm info: %v", err)
 	}

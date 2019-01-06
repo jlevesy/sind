@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
+	"strings"
 	"sync"
 
 	"github.com/docker/docker/api/types"
@@ -112,9 +114,14 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		return nil, fmt.Errorf("unable to get the primary node informations: %v", err)
 	}
 
-	boundPort, err := dockerDaemonPort(primaryNodeInfo)
+	daemonPort, err := dockerDaemonPort(primaryNodeInfo)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get the remote docker daemon port: %v", err)
+	}
+
+	daemonHost, err := dockerDaemonHost(hostClient)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get the remote docker daemon host: %v", err)
 	}
 
 	managerNodeCIDs, err := runContainers(
@@ -141,7 +148,10 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		return nil, fmt.Errorf("unable to create worker nodes: %v", err)
 	}
 
-	swarmClient, err := docker.NewClientWithOpts(docker.WithHost(fmt.Sprintf("tcp://localhost:%s", boundPort)), docker.WithVersion("1.39"))
+	swarmClient, err := docker.NewClientWithOpts(
+		docker.WithHost(fmt.Sprintf("tcp://%s:%s", daemonHost, daemonPort)),
+		docker.WithVersion("1.39"),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create swarm client: %v", err)
 	}
@@ -199,12 +209,14 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 	wg.Wait()
 
 	return &Cluster{
-		networkID:       net.ID,
+		NetworkID:       net.ID,
 		primaryNodeCID:  primaryNodeCID,
 		managerNodeCIDs: managerNodeCIDs,
 		workerNodeCIDs:  workerNodeCIDs,
-		hostClient:      hostClient,
-		swarmClient:     swarmClient,
+		PrimaryNodeHost: daemonHost,
+		PrimaryNodePort: daemonPort,
+		HostClient:      hostClient,
+		SwarmClient:     swarmClient,
 	}, nil
 }
 
@@ -297,4 +309,18 @@ func dockerDaemonPort(container types.ContainerJSON) (string, error) {
 	}
 
 	return boundsPorts[0].HostPort, nil
+}
+
+func dockerDaemonHost(client *docker.Client) (string, error) {
+	hostURL, err := url.Parse(client.DaemonHost())
+	if err != nil {
+		return "", err
+	}
+
+	// If it's unix, the bound ports are going to be exposed on localhost
+	if hostURL.Scheme == "unix" {
+		return "localhost", nil
+	}
+
+	return strings.Split(hostURL.Host, ":")[0], nil
 }

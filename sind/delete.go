@@ -13,7 +13,7 @@ func (c *Cluster) Delete(ctx context.Context) error {
 	c.deleteContainers(ctx)
 
 	// deleteNetwork
-	return c.hostClient.NetworkRemove(ctx, c.networkID)
+	return c.HostClient.NetworkRemove(ctx, c.NetworkID)
 }
 
 func (c *Cluster) deleteContainers(ctx context.Context) {
@@ -24,7 +24,7 @@ func (c *Cluster) deleteContainers(ctx context.Context) {
 	for _, cid := range containers {
 		go func(cid string) {
 			defer wg.Done()
-			c.hostClient.ContainerRemove(ctx, cid, types.ContainerRemoveOptions{Force: true})
+			c.HostClient.ContainerRemove(ctx, cid, types.ContainerRemoveOptions{Force: true})
 		}(cid)
 	}
 

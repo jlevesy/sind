@@ -6,19 +6,16 @@ import (
 
 // Cluster is an instance of a swarm cluster.
 type Cluster struct {
-	networkID string
+	PrimaryNodeHost string
+	PrimaryNodePort string
+	NetworkID       string
+
+	HostClient  *docker.Client
+	SwarmClient *docker.Client
 
 	primaryNodeCID  string
 	managerNodeCIDs []string
 	workerNodeCIDs  []string
-
-	hostClient  *docker.Client
-	swarmClient *docker.Client
-}
-
-// Swarm returns the docker client setup to contact the swarm.
-func (c *Cluster) Swarm() *docker.Client {
-	return c.swarmClient
 }
 
 func (c *Cluster) containerIDs() []string {
