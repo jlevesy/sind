@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -156,6 +157,10 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		return nil, fmt.Errorf("unable to create swarm client: %v", err)
 	}
 
+	if err = waitDaemonReady(ctx, swarmClient); err != nil {
+		return nil, fmt.Errorf("unable to connect to the swarm cluster: %v", err)
+	}
+
 	if _, err = swarmClient.SwarmInit(ctx, swarm.InitRequest{ListenAddr: defaultSwarmListenAddr}); err != nil {
 		return nil, fmt.Errorf("unable to init the swarm: %v", err)
 	}
@@ -218,6 +223,26 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		HostClient:      hostClient,
 		SwarmClient:     swarmClient,
 	}, nil
+}
+
+func waitDaemonReady(ctx context.Context, client *docker.Client) error {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			_, err := client.Info(ctx)
+			if err != nil {
+				continue
+			}
+
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+
+	}
 }
 
 func execContainer(ctx context.Context, client *docker.Client, cID string, cmd []string) error {
