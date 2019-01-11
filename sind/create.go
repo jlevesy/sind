@@ -232,7 +232,7 @@ func waitDaemonReady(ctx context.Context, client *docker.Client) error {
 	for {
 		select {
 		case <-ticker.C:
-			_, err := client.Info(ctx)
+			_, err := client.Ping(ctx)
 			if err != nil {
 				continue
 			}
