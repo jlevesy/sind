@@ -19,6 +19,7 @@ import (
 
 // Errors.
 var (
+	ErrEmptyClusterName     = errors.New("empty cluster name")
 	ErrEmptyNetworkName     = errors.New("empty network name")
 	ErrInvalidManagersCount = errors.New("invalid manager count, must be >= 1")
 	ErrInvalidWorkerCount   = errors.New("invalid worker count, must be >= 0")
@@ -32,6 +33,7 @@ const (
 
 // CreateClusterParams are args to pass to CreateCluster.
 type CreateClusterParams struct {
+	ClusterName string
 	NetworkName string
 
 	Managers int
@@ -42,6 +44,10 @@ type CreateClusterParams struct {
 }
 
 func (n *CreateClusterParams) validate() error {
+	if n.ClusterName == "" {
+		return ErrEmptyClusterName
+	}
+
 	if n.NetworkName == "" {
 		return ErrEmptyNetworkName
 	}
@@ -90,7 +96,15 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		return nil, fmt.Errorf("unable to create docker client: %v", err)
 	}
 
-	net, err := hostClient.NetworkCreate(ctx, params.NetworkName, types.NetworkCreate{})
+	net, err := hostClient.NetworkCreate(
+		ctx,
+		params.NetworkName,
+		types.NetworkCreate{
+			Labels: map[string]string{
+				clusterNameLabel: params.ClusterName,
+			},
+		},
+	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create cluster network: %v", err)
 	}
@@ -98,7 +112,13 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 	primaryNodeCID, err := runContainer(
 		ctx,
 		hostClient,
-		&container.Config{Image: params.imageName()},
+		&container.Config{
+			Image: params.imageName(),
+			Labels: map[string]string{
+				clusterNameLabel: params.ClusterName,
+				clusterRoleLabel: primaryNode,
+			},
+		},
 		&container.HostConfig{
 			Privileged:      true,
 			PublishAllPorts: true,
@@ -115,12 +135,12 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		return nil, fmt.Errorf("unable to get the primary node informations: %v", err)
 	}
 
-	daemonPort, err := dockerDaemonPort(primaryNodeInfo)
+	swarmPort, err := swarmPort(primaryNodeInfo)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get the remote docker daemon port: %v", err)
 	}
 
-	daemonHost, err := dockerDaemonHost(hostClient)
+	swarmHost, err := swarmHost(hostClient)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get the remote docker daemon host: %v", err)
 	}
@@ -129,7 +149,13 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		ctx,
 		hostClient,
 		params.managersToRun(),
-		&container.Config{Image: params.imageName()},
+		&container.Config{
+			Image: params.imageName(),
+			Labels: map[string]string{
+				clusterNameLabel: params.ClusterName,
+				clusterRoleLabel: managerNode,
+			},
+		},
 		&container.HostConfig{Privileged: true},
 		networkConfig(params, net.ID),
 	)
@@ -141,7 +167,13 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		ctx,
 		hostClient,
 		params.Workers,
-		&container.Config{Image: params.imageName()},
+		&container.Config{
+			Image: params.imageName(),
+			Labels: map[string]string{
+				clusterNameLabel: params.ClusterName,
+				clusterRoleLabel: workerNode,
+			},
+		},
 		&container.HostConfig{Privileged: true},
 		networkConfig(params, net.ID),
 	)
@@ -150,7 +182,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 	}
 
 	swarmClient, err := docker.NewClientWithOpts(
-		docker.WithHost(fmt.Sprintf("tcp://%s:%s", daemonHost, daemonPort)),
+		docker.WithHost(fmt.Sprintf("tcp://%s:%s", swarmHost, swarmPort)),
 		docker.WithVersion("1.39"),
 	)
 	if err != nil {
@@ -214,14 +246,15 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 	wg.Wait()
 
 	return &Cluster{
-		NetworkID:       net.ID,
-		primaryNodeCID:  primaryNodeCID,
-		managerNodeCIDs: managerNodeCIDs,
-		workerNodeCIDs:  workerNodeCIDs,
-		PrimaryNodeHost: daemonHost,
-		PrimaryNodePort: daemonPort,
-		HostClient:      hostClient,
-		SwarmClient:     swarmClient,
+		Name: params.ClusterName,
+		Cluster: Swarm{
+			Host: swarmHost,
+			Port: swarmPort,
+		},
+		Host: Docker{
+			Host: hostClient.DaemonHost(),
+			// TODO support TLS information ?
+		},
 	}, nil
 }
 
@@ -323,7 +356,7 @@ func networkConfig(params CreateClusterParams, networkID string) *network.Networ
 	}
 }
 
-func dockerDaemonPort(container types.ContainerJSON) (string, error) {
+func swarmPort(container types.ContainerJSON) (string, error) {
 	boundsPorts, ok := container.NetworkSettings.Ports["2375/tcp"]
 	if !ok {
 		return "", ErrPrimaryNodeNotBound
@@ -336,7 +369,7 @@ func dockerDaemonPort(container types.ContainerJSON) (string, error) {
 	return boundsPorts[0].HostPort, nil
 }
 
-func dockerDaemonHost(client *docker.Client) (string, error) {
+func swarmHost(client *docker.Client) (string, error) {
 	hostURL, err := url.Parse(client.DaemonHost())
 	if err != nil {
 		return "", err

@@ -44,7 +44,7 @@ func runCreate(cmd *cobra.Command, args []string) {
 	}
 
 	if err := store.ValidateName(clusterName); err != nil {
-		fmt.Printf("invalid cluster name: %v", err)
+		fmt.Printf("invalid cluster name: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -52,6 +52,7 @@ func runCreate(cmd *cobra.Command, args []string) {
 		Managers:    managers,
 		Workers:     workers,
 		NetworkName: networkName,
+		ClusterName: clusterName,
 	}
 
 	cluster, err := sind.CreateCluster(ctx, clusterParams)
@@ -60,7 +61,7 @@ func runCreate(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	if err = store.Save(clusterName, *cluster); err != nil {
+	if err = store.Save(*cluster); err != nil {
 		fmt.Printf("unable to save cluster: %v\n", err)
 		os.Exit(1)
 	}

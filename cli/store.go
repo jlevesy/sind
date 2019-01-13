@@ -84,13 +84,13 @@ func (s *Store) ValidateName(clusterName string) error {
 }
 
 // Save will persist a new cluster.
-func (s *Store) Save(clusterName string, cluster sind.Cluster) error {
+func (s *Store) Save(cluster sind.Cluster) error {
 	clusters, err := s.readAll()
 	if err != nil {
 		return fmt.Errorf("unable to read existing clusters: %v", err)
 	}
 
-	clusters[clusterName] = cluster
+	clusters[cluster.Name] = cluster
 
 	file, err := os.OpenFile(s.filePath, os.O_RDWR, 0666)
 	if err != nil {
