@@ -35,6 +35,10 @@ type Swarm struct {
 	client *docker.Client
 }
 
+func (s *Swarm) DockerHost() string {
+	return fmt.Sprintf("tcp://%s:%s", s.Host, s.Port)
+}
+
 // Client will return a instance of the docker client.
 func (s *Swarm) Client() (*docker.Client, error) {
 	if s.client != nil {
@@ -42,7 +46,7 @@ func (s *Swarm) Client() (*docker.Client, error) {
 	}
 
 	client, err := docker.NewClientWithOpts(
-		docker.WithHost(fmt.Sprintf("tcp://%s:%s", s.Host, s.Port)),
+		docker.WithHost(s.DockerHost()),
 		docker.WithVersion("1.39"),
 	)
 
