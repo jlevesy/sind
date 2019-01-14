@@ -128,6 +128,20 @@ func (s *Store) Delete(clusterName string) error {
 	return s.writeAll(clusters)
 }
 
+// List will return all existing clusters.
+func (s *Store) List() ([]sind.Cluster, error) {
+	clusters, err := s.readAll()
+	if err != nil {
+		return nil, fmt.Errorf("unable to read existing clusters: %v", err)
+	}
+
+	result := make([]sind.Cluster, 0, len(clusters))
+	for _, cluster := range clusters {
+		result = append(result, cluster)
+	}
+	return result, nil
+}
+
 func (s *Store) writeAll(clusters clusters) error {
 	file, err := os.OpenFile(s.filePath, os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
