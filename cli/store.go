@@ -15,6 +15,7 @@ import (
 var (
 	ErrAlreadyExists      = errors.New("cluster already exists")
 	ErrMissingClusterName = errors.New("missing cluster name")
+	ErrClusterNotFound    = errors.New("cluster not found")
 )
 
 // Store is in charge of storing and retrieving clusters.
@@ -28,7 +29,7 @@ type clusters map[string]sind.Cluster
 func NewStore() (*Store, error) {
 	usr, err := user.Current()
 	if err != nil {
-		return nil, fmt.Errorf("unable to initialize configuration storusere: %v", err)
+		return nil, fmt.Errorf("unable to initialize configuration store: %v", err)
 	}
 
 	path := filepath.Join(usr.HomeDir, ".config", "sind")
@@ -92,7 +93,43 @@ func (s *Store) Save(cluster sind.Cluster) error {
 
 	clusters[cluster.Name] = cluster
 
-	file, err := os.OpenFile(s.filePath, os.O_RDWR, 0666)
+	return s.writeAll(clusters)
+}
+
+// Load will return a cluster according to its name.
+func (s *Store) Load(clusterName string) (*sind.Cluster, error) {
+	clusters, err := s.readAll()
+	if err != nil {
+		return nil, fmt.Errorf("unable to read existing clusters: %v", err)
+	}
+
+	cluster, ok := clusters[clusterName]
+	if !ok {
+		return nil, ErrClusterNotFound
+	}
+
+	return &cluster, nil
+}
+
+// Delete will delete a cluster from configuration.
+func (s *Store) Delete(clusterName string) error {
+	clusters, err := s.readAll()
+	if err != nil {
+		return fmt.Errorf("unable to read existing clusters: %v", err)
+	}
+
+	_, ok := clusters[clusterName]
+	if !ok {
+		return ErrClusterNotFound
+	}
+
+	delete(clusters, clusterName)
+
+	return s.writeAll(clusters)
+}
+
+func (s *Store) writeAll(clusters clusters) error {
+	file, err := os.OpenFile(s.filePath, os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
 		return fmt.Errorf("unable to open the clusters file: %v", err)
 	}

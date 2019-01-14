@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"os"
-	"time"
 
 	"github.com/jlevesy/go-sind/sind"
 )
@@ -32,7 +31,7 @@ func init() {
 
 func runCreate(cmd *cobra.Command, args []string) {
 	fmt.Printf("Creating a new cluster with %d managers and %d workers\n", managers, workers)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	store, err := NewStore()
