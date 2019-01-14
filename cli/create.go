@@ -14,7 +14,6 @@ var (
 	managers    = 0
 	workers     = 0
 	networkName = ""
-	clusterName = ""
 
 	createCmd = &cobra.Command{
 		Use:   "create",
@@ -26,7 +25,6 @@ var (
 func init() {
 	rootCmd.AddCommand(createCmd)
 
-	createCmd.Flags().StringVarP(&clusterName, "cluster", "c", "sind_default", "Cluster name.")
 	createCmd.Flags().IntVarP(&managers, "managers", "m", 1, "Amount of managers in the created cluster.")
 	createCmd.Flags().IntVarP(&workers, "workers", "w", 0, "Amount of workers in the created cluster.")
 	createCmd.Flags().StringVarP(&networkName, "network_name", "n", "sind_default", "Name of the network to create.")

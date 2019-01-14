@@ -7,11 +7,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var cfgFile string
+var (
+	clusterName = ""
+)
 
 var rootCmd = &cobra.Command{
-	Use:   "sind",
-	Short: "Easily create swarm clusters on a docker host using swarm in docker.",
+	Use:              "sind",
+	Short:            "Easily create swarm clusters on a docker host using swarm in docker.",
+	TraverseChildren: true,
+}
+
+func init() {
+	rootCmd.Flags().StringVarP(&clusterName, "cluster", "c", "sind_default", "Cluster name.")
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
