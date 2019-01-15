@@ -1,8 +1,11 @@
 package sind
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 	docker "github.com/docker/docker/client"
 )
 
@@ -27,6 +30,24 @@ func (c *Cluster) clusterLabel() string {
 	return fmt.Sprintf("%s=%s", clusterNameLabel, c.Name)
 }
 
+// ContainerList will return the lists of containers.
+func (c *Cluster) ContainerList(ctx context.Context) ([]types.Container, error) {
+	client, err := c.Host.Client()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get docker client: %v", err)
+	}
+
+	containers, err := client.ContainerList(ctx, types.ContainerListOptions{
+		Filters: filters.NewArgs(filters.Arg("label", c.clusterLabel())),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to get container list: %v", err)
+	}
+
+	return containers, nil
+
+}
+
 // Swarm are the informations required to connect to the swarm cluster.
 type Swarm struct {
 	Host string
@@ -35,6 +56,7 @@ type Swarm struct {
 	client *docker.Client
 }
 
+// DockerHost will return the host to use to communicate with the swarm cluster.
 func (s *Swarm) DockerHost() string {
 	return fmt.Sprintf("tcp://%s:%s", s.Host, s.Port)
 }

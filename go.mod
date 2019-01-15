@@ -6,6 +6,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.3.3 // indirect
 	github.com/gogo/protobuf v1.2.0 // indirect
+	github.com/golang/sync v0.0.0-20181221193216-37e7f081c4d4
 	github.com/mitchellh/go-homedir v1.0.0
 	github.com/moby/moby v0.0.0-20170601211448-f5ec1e2936dc
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect

@@ -36,9 +36,7 @@ func (c *Cluster) deleteContainers(ctx context.Context) error {
 		return fmt.Errorf("unable to get docker client: %v", err)
 	}
 
-	containers, err := client.ContainerList(ctx, types.ContainerListOptions{
-		Filters: filters.NewArgs(filters.Arg("label", c.clusterLabel())),
-	})
+	containers, err := c.ContainerList(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to get container list: %v", err)
 	}
