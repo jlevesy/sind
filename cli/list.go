@@ -10,9 +10,10 @@ import (
 
 var (
 	listCmd = &cobra.Command{
-		Use:   "list",
-		Short: "List existing clusters.",
-		Run:   runList,
+		Use:     "list",
+		Short:   "List existing clusters.",
+		Aliases: []string{"ls"},
+		Run:     runList,
 	}
 )
 
