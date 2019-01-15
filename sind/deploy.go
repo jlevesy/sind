@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/golang/sync/errgroup"
 
@@ -40,31 +41,11 @@ func (c *Cluster) DeployImage(ctx context.Context, ref string) error {
 		return ErrImageReferenceNotFound
 	}
 
-	file, err := ioutil.TempFile("", "sind")
+	archivePath, err := prepareArchive(ctx, hostClient, imgs)
 	if err != nil {
-		return fmt.Errorf("unable to create the image file: %v", err)
+		return fmt.Errorf("unable to prepare the archive: %v", err)
 	}
-
-	tarWriter := tar.NewWriter(file)
-
-	defer func() {
-		file.Close()
-		os.Remove(file.Name())
-	}()
-
-	imgReader, err := hostClient.ImageSave(ctx, toImageIDs(imgs))
-	if err != nil {
-		return fmt.Errorf("unable to save the image to disk: %v", err)
-	}
-	defer imgReader.Close()
-
-	if _, err = io.Copy(tarWriter, imgReader); err != nil {
-		return fmt.Errorf("unable to save the image to disk: %v", err)
-	}
-
-	if err = tarWriter.Close(); err != nil {
-		return fmt.Errorf("unable to close the tar writer: %v", err)
-	}
+	defer os.Remove(archivePath)
 
 	containers, err := c.ContainerList(ctx)
 	if err != nil {
@@ -75,7 +56,7 @@ func (c *Cluster) DeployImage(ctx context.Context, ref string) error {
 	for _, container := range containers {
 		cID := container.ID
 		errg.Go(func() error {
-			return deployImage(ctx, hostClient, file.Name(), cID)
+			return deployImage(ctx, hostClient, archivePath, cID)
 		})
 	}
 
@@ -95,7 +76,7 @@ func (c *Cluster) DeployImage(ctx context.Context, ref string) error {
 					"docker",
 					"load",
 					"-i",
-					file.Name(),
+					archivePath,
 				},
 			)
 		})
@@ -116,11 +97,73 @@ func deployImage(ctx context.Context, client *docker.Client, filePath, container
 
 	defer file.Close()
 
-	if err := client.CopyToContainer(ctx, containerID, filePath, file, types.CopyToContainerOptions{}); err != nil {
+	if err := client.CopyToContainer(ctx, containerID, filepath.Dir(filePath), file, types.CopyToContainerOptions{}); err != nil {
 		return fmt.Errorf("unable to copy the image to container %s: %v", containerID, err)
 	}
 
 	return nil
+}
+
+func prepareArchive(ctx context.Context, hostClient *docker.Client, imgs []types.ImageSummary) (string, error) {
+	imgsFile, err := ioutil.TempFile("", "img_sind")
+	if err != nil {
+		return "", fmt.Errorf("unable to create the image file: %v", err)
+	}
+
+	defer func() {
+		imgsFile.Close()
+		os.Remove(imgsFile.Name())
+	}()
+
+	imgReader, err := hostClient.ImageSave(ctx, toImageIDs(imgs))
+	if err != nil {
+		return "", fmt.Errorf("unable to save the images to disk: %v", err)
+	}
+	defer imgReader.Close()
+
+	if bytes, err := io.Copy(imgsFile, imgReader); err != nil {
+		return "", fmt.Errorf("unable to save the images to disk (copied %d): %v", bytes, err)
+	}
+
+	if _, err = imgsFile.Seek(0, 0); err != nil {
+		return "", fmt.Errorf("unable to seek to the begining of the image file: %v", err)
+	}
+
+	tarImgsFile, err := ioutil.TempFile("", "tar_img_sind")
+	if err != nil {
+		return "", fmt.Errorf("unable to create the tar file: %v", err)
+	}
+	defer tarImgsFile.Close()
+
+	imgsFileInfo, err := imgsFile.Stat()
+	if err != nil {
+		return "", fmt.Errorf("unabel to collect images file info: %v", err)
+	}
+
+	tarWriter := tar.NewWriter(tarImgsFile)
+
+	err = tarWriter.WriteHeader(
+		&tar.Header{
+			Typeflag: tar.TypeReg,
+			Name:     imgsFileInfo.Name(),
+			Size:     imgsFileInfo.Size(),
+			Mode:     0664,
+		},
+	)
+	if err != nil {
+		return "", fmt.Errorf("unable to write tar file header: %v", err)
+	}
+
+	bytes, err := io.Copy(tarWriter, imgsFile)
+	if err != nil {
+		return "", fmt.Errorf("unable to tar image files (wrote %d): %v", bytes, err)
+	}
+
+	if err = tarWriter.Close(); err != nil {
+		return "", fmt.Errorf("unable to close the tar writer properly (wrote %d): %v", bytes, err)
+	}
+
+	return tarImgsFile.Name(), nil
 }
 
 func toImageIDs(imgs []types.ImageSummary) []string {

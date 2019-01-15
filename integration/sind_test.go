@@ -69,10 +69,7 @@ func TestSindCanDeployAnImageToCluster(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to create cluster: %v", err)
 	}
-
-	if err = cluster.Delete(ctx); err != nil {
-		t.Fatalf("failed to delete the cluster: %v", err)
-	}
+	defer cluster.Delete(ctx)
 
 	hostClient, err := cluster.Host.Client()
 	if err != nil {
