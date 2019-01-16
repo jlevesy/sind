@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -75,14 +77,19 @@ func (n *CreateClusterParams) imageName() string {
 	return dockerDINDimage
 }
 
-func (n *CreateClusterParams) portBindings() nat.PortMap {
+func (n *CreateClusterParams) portBindings() (nat.PortMap, error) {
 	res := nat.PortMap{}
 
-	for hostPort, cPort := range n.PortBindings {
-		res[nat.Port(cPort)] = []nat.PortBinding{{HostPort: hostPort}}
+	for hostPort, rawContainerPort := range n.PortBindings {
+		proto, port := nat.SplitProtoPort(rawContainerPort)
+		parsedPort, err := nat.NewPort(proto, port)
+		if err != nil {
+			return nil, err
+		}
+		res[parsedPort] = []nat.PortBinding{{HostPort: hostPort}}
 	}
 
-	return res
+	return res, nil
 }
 
 // CreateCluster creates a new swarm cluster.
@@ -109,6 +116,11 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		return nil, fmt.Errorf("unable to create cluster network: %v", err)
 	}
 
+	pb, err := params.portBindings()
+	if err != nil {
+		return nil, fmt.Errorf("unable to define port bindings: %v", err)
+	}
+
 	primaryNodeCID, err := runContainer(
 		ctx,
 		hostClient,
@@ -122,7 +134,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		&container.HostConfig{
 			Privileged:      true,
 			PublishAllPorts: true,
-			PortBindings:    params.portBindings(),
+			PortBindings:    pb,
 		},
 		networkConfig(params, net.ID),
 	)
