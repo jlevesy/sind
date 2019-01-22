@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
+
+	"github.com/golang/sync/errgroup"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -41,17 +42,17 @@ func (c *Cluster) deleteContainers(ctx context.Context) error {
 		return fmt.Errorf("unable to get container list: %v", err)
 	}
 
-	wg := sync.WaitGroup{}
-	wg.Add(len(containers))
-
+	var errg errgroup.Group
 	for _, container := range containers {
-		go func(cid string) {
-			defer wg.Done()
-			client.ContainerRemove(ctx, cid, types.ContainerRemoveOptions{Force: true})
-		}(container.ID)
+		cid := container.ID
+		errg.Go(func() error {
+			return client.ContainerRemove(ctx, cid, types.ContainerRemoveOptions{Force: true})
+		})
 	}
 
-	wg.Wait()
+	if err = errg.Wait(); err != nil {
+		return fmt.Errorf("unable to remove a container: %v", err)
+	}
 
 	return nil
 }
@@ -74,12 +75,16 @@ func (c *Cluster) deleteNetwork(ctx context.Context) error {
 	if len(networks) == 0 {
 		return ErrNetworkNotFound
 	}
-	if len(networks) > 1 {
-		return ErrNetworkNotUnique
+	var errg errgroup.Group
+	for _, network := range networks {
+		netID := network.ID
+		errg.Go(func() error {
+			return client.NetworkRemove(ctx, netID)
+		})
 	}
 
-	if err = client.NetworkRemove(ctx, networks[0].ID); err != nil {
-		return fmt.Errorf("unable to delete cluster network: %v", err)
+	if err = errg.Wait(); err != nil {
+		return fmt.Errorf("unable to delete a network: %v", err)
 	}
 
 	return nil
