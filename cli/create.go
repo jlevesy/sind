@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"os"
-	"strings"
 
 	"github.com/jlevesy/go-sind/sind"
 )
@@ -54,7 +53,7 @@ func runCreate(cmd *cobra.Command, args []string) {
 		Workers:      workers,
 		NetworkName:  networkName,
 		ClusterName:  clusterName,
-		PortBindings: preparePorts(portsMapping),
+		PortBindings: portsMapping,
 	}
 
 	cluster, err := sind.CreateCluster(ctx, clusterParams)
@@ -69,18 +68,4 @@ func runCreate(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("cluster %s successfuly created !\n", clusterName)
-}
-
-func preparePorts(raw []string) map[string]string {
-	ports := map[string]string{}
-
-	for _, pb := range raw {
-		split := strings.Split(pb, ":")
-		if len(split) != 2 {
-			continue
-		}
-		ports[split[0]] = split[1]
-	}
-
-	return ports
 }
