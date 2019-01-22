@@ -62,8 +62,9 @@ func TestSindCanCreateMultipleClusters(t *testing.T) {
 	}
 }
 
-func TestSindCanDeployAnImageToCluster(t *testing.T) {
+func TestSindCanPushAnImageToCluster(t *testing.T) {
 	ctx := context.Background()
+	tag := "alpine:latest"
 	params := sind.CreateClusterParams{ClusterName: "test", NetworkName: "test_swarm", Managers: 1}
 	cluster, err := sind.CreateCluster(ctx, params)
 	if err != nil {
@@ -76,13 +77,13 @@ func TestSindCanDeployAnImageToCluster(t *testing.T) {
 		t.Fatalf("unable to get a docker client: %v", err)
 	}
 
-	out, err := hostClient.ImagePull(ctx, "alpine:latest", types.ImagePullOptions{})
+	out, err := hostClient.ImagePull(ctx, tag, types.ImagePullOptions{})
 	if err != nil {
 		t.Fatalf("unable to pull the alpine:latest image: %v", err)
 	}
 	defer out.Close()
 
-	if err = cluster.DeployImage(ctx, "alpine:latest"); err != nil {
+	if err = cluster.PushImage(ctx, []string{tag}); err != nil {
 		t.Fatalf("unable to deploy the alpine:latest image to the cluster: %v", err)
 	}
 
@@ -93,7 +94,7 @@ func TestSindCanDeployAnImageToCluster(t *testing.T) {
 
 	imgs, err := swarmClient.ImageList(
 		ctx,
-		types.ImageListOptions{Filters: filters.NewArgs(filters.Arg("reference", "alpine:latest"))},
+		types.ImageListOptions{Filters: filters.NewArgs(filters.Arg("reference", tag))},
 	)
 	if err != nil {
 		t.Fatalf("unable to fetch images from swarm cluster: %v", err)
@@ -103,5 +104,9 @@ func TestSindCanDeployAnImageToCluster(t *testing.T) {
 		t.Fatalf("expected to have one image deployed to the cluster, got %d", len(imgs))
 	}
 
-	t.Log(imgs[0])
+	img := imgs[0]
+
+	if img.RepoTags[0] != tag {
+		t.Fatalf("invalid tag found, expected %s got %s", tag, img.RepoTags[0])
+	}
 }

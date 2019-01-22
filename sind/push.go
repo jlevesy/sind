@@ -21,8 +21,8 @@ var (
 	ErrImageReferenceNotFound = errors.New("image reference not found")
 )
 
-// DeployImage deploys an image from the host to the cluster.
-func (c *Cluster) DeployImage(ctx context.Context, refs []string) error {
+// PushImage pushes an image from the host to the cluster.
+func (c *Cluster) PushImage(ctx context.Context, refs []string) error {
 	hostClient, err := c.Host.Client()
 	if err != nil {
 		return fmt.Errorf("unable to get host client: %v", err)
@@ -43,7 +43,7 @@ func (c *Cluster) DeployImage(ctx context.Context, refs []string) error {
 	for _, container := range containers {
 		cID := container.ID
 		errg.Go(func() error {
-			return deployImage(ctx, hostClient, archivePath, cID)
+			return copyToContainer(ctx, hostClient, archivePath, cID)
 		})
 	}
 
@@ -76,7 +76,7 @@ func (c *Cluster) DeployImage(ctx context.Context, refs []string) error {
 	return nil
 }
 
-func deployImage(ctx context.Context, client *docker.Client, filePath, containerID string) error {
+func copyToContainer(ctx context.Context, client *docker.Client, filePath, containerID string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("unable to open file to deploy: %v", err)
