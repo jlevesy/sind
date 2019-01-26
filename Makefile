@@ -32,6 +32,10 @@ unit_test:
 # Build targets
 #
 
+.PHONY: vendor
+vendor:
+	go mod download
+
 install: build
 	mv ${DIST_DIR}/sind $${GOPATH}/bin/sind
 
