@@ -43,6 +43,10 @@ unit_test:
 		-run=$(T) \
 		$(shell go list ./... | grep -v integration)
 
+.PHONY: lint
+lint:
+	golangci-lint run
+
 #
 # Build targets
 #
@@ -75,7 +79,6 @@ toolbox: cachedirs
 	docker build \
 		--build-arg=UID=$(shell id -u) \
 		--build-arg=GID=$(shell id -g) \
-		--build-arg=DOCKER_GID=977 \
 		-t go-sind-toolbox \
 		-f Dockerfile.toolbox .
 
