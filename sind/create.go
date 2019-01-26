@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -17,6 +16,7 @@ import (
 	"github.com/docker/docker/api/types/swarm"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	"github.com/golang/sync/errgroup"
 )
 
 // Errors.
@@ -210,13 +210,12 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		return nil, fmt.Errorf("unable to collect join tokens: %v", err)
 	}
 
-	wg := sync.WaitGroup{}
-	wg.Add(len(managerNodeCIDs) + len(workerNodeCIDs))
+	var errg errgroup.Group
 	managerAddr := fmt.Sprintf("%s:2377", primaryNodeCID[0:12])
-	for _, cid := range managerNodeCIDs {
-		go func(cid string) {
-			defer wg.Done()
-			execContainer(
+	for _, managerID := range managerNodeCIDs {
+		cid := managerID
+		errg.Go(func() error {
+			return execContainer(
 				ctx,
 				hostClient,
 				cid,
@@ -229,13 +228,13 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 					managerAddr,
 				},
 			)
-		}(cid)
+		})
 	}
 
-	for _, cid := range workerNodeCIDs {
-		go func(cid string) {
-			defer wg.Done()
-			execContainer(
+	for _, workerID := range workerNodeCIDs {
+		cid := workerID
+		errg.Go(func() error {
+			return execContainer(
 				ctx,
 				hostClient,
 				cid,
@@ -248,10 +247,12 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 					managerAddr,
 				},
 			)
-		}(cid)
+		})
 	}
 
-	wg.Wait()
+	if err = errg.Wait(); err != nil {
+		return nil, fmt.Errorf("unable to build the cluster: %v", err)
+	}
 
 	return &Cluster{
 		Name: params.ClusterName,

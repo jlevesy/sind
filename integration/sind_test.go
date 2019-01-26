@@ -21,7 +21,11 @@ func TestSindCanCreateACluster(t *testing.T) {
 		t.Fatalf("unable to create cluster: %v", err)
 	}
 
-	defer cluster.Delete(ctx)
+	defer func() {
+		if err = cluster.Delete(ctx); err != nil {
+			t.Fatalf("unable to delete cluster: %v", err)
+		}
+	}()
 
 	swarmClient, err := cluster.Cluster.Client()
 	if err != nil {
@@ -60,7 +64,11 @@ func TestSindCanCreateMultipleClusters(t *testing.T) {
 			t.Fatalf("unable to create cluster: %v", err)
 		}
 
-		defer cluster.Delete(ctx)
+		defer func() {
+			if err = cluster.Delete(ctx); err != nil {
+				t.Fatalf("unable to delete cluster: %v", err)
+			}
+		}()
 	}
 }
 
@@ -72,7 +80,11 @@ func TestSindCanPushAnImageToCluster(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to create cluster: %v", err)
 	}
-	defer cluster.Delete(ctx)
+	defer func() {
+		if err = cluster.Delete(ctx); err != nil {
+			t.Fatalf("unable to delete cluster: %v", err)
+		}
+	}()
 
 	hostClient, err := cluster.Host.Client()
 	if err != nil {

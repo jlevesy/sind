@@ -13,8 +13,7 @@ import (
 
 // Errors
 var (
-	ErrNetworkNotFound  = errors.New("network not found")
-	ErrNetworkNotUnique = errors.New("network not unique")
+	ErrNetworkNotFound = errors.New("network not found")
 )
 
 // Delete will delete the cluster
