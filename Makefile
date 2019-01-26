@@ -20,13 +20,28 @@ dry_release: clean
 
 test: unit_test integration_test
 
-.PHONY: integration_test
+.phony: integration_test
 integration_test:
-	go test ./integration
+	docker-compose \
+		-f ./integration/docker-compose.yaml \
+		build \
+		--build-arg UID=$(shell id -u) \
+		--build-arg GID=$(shell id -g)
+	docker-compose \
+		-f ./integration/docker-compose.yaml \
+		up client
+	docker-compose \
+		-f ./integration/docker-compose.yaml \
+		down -v
 
 .PHONY: unit_test
 unit_test:
-	go test -race -v -cover -timeout=5s -run=$(T) $(shell go list ./... | grep -v integration)
+	go test \
+		-race \
+		-cover \
+		-timeout=5s \
+		-run=$(T) \
+		$(shell go list ./... | grep -v integration)
 
 #
 # Build targets
@@ -50,3 +65,22 @@ dist:
 
 clean:
 	rm -rf ${DIST_DIR}
+
+#
+# Toolbox setup
+#
+
+.PHONY: toolbox
+toolbox: cachedirs
+	docker build \
+		--build-arg=UID=$(shell id -u) \
+		--build-arg=GID=$(shell id -g) \
+		--build-arg=DOCKER_GID=977 \
+		-t go-sind-toolbox \
+		-f Dockerfile.toolbox .
+
+.PHONY: cachedirs
+cachedirs:
+	@mkdir -p .gocache/mod
+	@mkdir -p .gocache/build
+

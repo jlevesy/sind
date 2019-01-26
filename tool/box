@@ -1,0 +1,9 @@
+#! /bin/sh
+docker run \
+    -ti \
+     --rm \
+    -v ${PWD}:/go/src/github.com/jlevesy/go-sind \
+    -v ${PWD}/.gocache/mod:/go/pkg/mod \
+    -v ${PWD}/.gocache/build:/go/.cache/go-build \
+    go-sind-toolbox \
+    $@

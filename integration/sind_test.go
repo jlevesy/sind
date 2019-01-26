@@ -3,6 +3,8 @@ package integration
 import (
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"testing"
 
 	"github.com/jlevesy/go-sind/sind"
@@ -46,7 +48,7 @@ func TestSindCanCreateACluster(t *testing.T) {
 
 func TestSindCanCreateMultipleClusters(t *testing.T) {
 	ctx := context.Background()
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 3; i++ {
 		params := sind.CreateClusterParams{
 			ClusterName: fmt.Sprintf("foo_%d", i),
 			NetworkName: fmt.Sprintf("test_swarm_%d", i),
@@ -82,6 +84,10 @@ func TestSindCanPushAnImageToCluster(t *testing.T) {
 		t.Fatalf("unable to pull the alpine:latest image: %v", err)
 	}
 	defer out.Close()
+
+	if _, err := io.Copy(ioutil.Discard, out); err != nil {
+		t.Fatalf("unable to pull the alpine:latest image: %v", err)
+	}
 
 	if err = cluster.PushImage(ctx, []string{tag}); err != nil {
 		t.Fatalf("unable to deploy the alpine:latest image to the cluster: %v", err)

@@ -1,0 +1,33 @@
+version: v1.0
+name: Pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+
+blocks:
+  - name: Install dependencies
+    task:
+      jobs:
+        - name: make vendor and cache
+          commands:
+            - checkout
+            - make toolbox
+            - cache restore go-mod-$SEMAPHORE_GIT_BRANCH-$(checksum go.sum),go-mod-$SEMAPHORE_GIT_BRANCH,go-mod-master
+            - ./tool/box make vendor
+            - cache store go-mod-$SEMAPHORE_GIT_BRANCH-$(checksum go.sum) ./.gocache
+
+  - name: Test
+    task:
+      prologue:
+        commands:
+            - checkout
+            - cache restore go-mod-$SEMAPHORE_GIT_BRANCH-$(checksum go.sum),go-mod-$SEMAPHORE_GIT_BRANCH,go-mod-master
+            - make toolbox
+      jobs:
+        - name: Unit
+          commands:
+            - tool/box make unit_test
+        - name: Integration
+          commands:
+            - make integration_test
