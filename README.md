@@ -1,5 +1,7 @@
 # go-sind
 
+[![Build Status](https://semaphoreci.com/api/v1/jlevesy/go-sind/branches/master/badge.svg)](https://semaphoreci.com/jlevesy/go-sind)
+
 go-SIND enables you to create swarm clusters on a docker host using SIND (swarm in docker).
 
 Not yet ready to use, this is a PoC at the moment.
