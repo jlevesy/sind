@@ -29,7 +29,10 @@ integration_test:
 		--build-arg GID=$(shell id -g)
 	docker-compose \
 		-f ./integration/docker-compose.yaml \
-		up client
+		up --exit-code-from client client
+	docker-compose \
+		-f ./integration/docker-compose.yaml \
+		logs dind
 	docker-compose \
 		-f ./integration/docker-compose.yaml \
 		down -v

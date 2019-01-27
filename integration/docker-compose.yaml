@@ -17,6 +17,7 @@ services:
     command:
       - go
       - test
+      - -count=1
       - -v
       - ./integration
 
