@@ -45,7 +45,14 @@ func (c *Cluster) deleteContainers(ctx context.Context) error {
 	for _, container := range containers {
 		cid := container.ID
 		errg.Go(func() error {
-			return client.ContainerRemove(ctx, cid, types.ContainerRemoveOptions{Force: true})
+			return client.ContainerRemove(
+				ctx,
+				cid,
+				types.ContainerRemoveOptions{
+					Force:         true,
+					RemoveVolumes: true,
+				},
+			)
 		})
 	}
 
