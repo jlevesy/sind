@@ -29,7 +29,10 @@ integration_test:
 		--build-arg GID=$(shell id -g)
 	docker-compose \
 		-f ./integration/docker-compose.yaml \
-		up client
+		up --exit-code-from client client
+	docker-compose \
+		-f ./integration/docker-compose.yaml \
+		logs dind
 	docker-compose \
 		-f ./integration/docker-compose.yaml \
 		down -v
@@ -42,6 +45,10 @@ unit_test:
 		-timeout=5s \
 		-run=$(T) \
 		$(shell go list ./... | grep -v integration)
+
+.PHONY: lint
+lint:
+	golangci-lint run
 
 #
 # Build targets
@@ -75,7 +82,6 @@ toolbox: cachedirs
 	docker build \
 		--build-arg=UID=$(shell id -u) \
 		--build-arg=GID=$(shell id -g) \
-		--build-arg=DOCKER_GID=977 \
 		-t go-sind-toolbox \
 		-f Dockerfile.toolbox .
 

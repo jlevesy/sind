@@ -25,6 +25,9 @@ blocks:
             - cache restore go-mod-$SEMAPHORE_GIT_BRANCH-$(checksum go.sum),go-mod-$SEMAPHORE_GIT_BRANCH,go-mod-master
             - make toolbox
       jobs:
+        - name: Lint
+          commands:
+            - tool/box make lint
         - name: Unit
           commands:
             - tool/box make unit_test

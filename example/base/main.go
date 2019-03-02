@@ -33,12 +33,14 @@ func main() {
 	defer func() {
 		deleteCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		cluster.Delete(deleteCtx)
+		if err = cluster.Delete(deleteCtx); err != nil {
+			log.Fatalf("unable to delete cluster: %v", err)
+		}
 	}()
 
 	log.Println("success, press ctrl+C to stop")
 
-	sig := make(chan os.Signal)
+	sig := make(chan os.Signal, 1)
 
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 
