@@ -32,9 +32,6 @@ integration_test:
 		up --exit-code-from client client
 	docker-compose \
 		-f ./integration/docker-compose.yaml \
-		logs dind
-	docker-compose \
-		-f ./integration/docker-compose.yaml \
 		down -v
 
 .PHONY: unit_test
@@ -58,7 +55,7 @@ lint:
 vendor:
 	go mod download
 
-install: build
+install:
 	mv ${DIST_DIR}/sind $${GOPATH}/bin/sind
 
 build: clean dist binary
