@@ -19,7 +19,7 @@ Head to the [base example](./example/base/main.go)  or to the [integration test 
 * Untar the downloaded archive and move the binary somewhere on your PATH
 
 ```
-$ curl -sSL -o sind.tar.gz "https://github.com/jlevesy/go-sind/releases/download/v0.1.0/sind_0.1.0_$(uname -s)_$(uname -m).tar.gz"
+$ curl -sSL -o sind.tar.gz "https://github.com/jlevesy/go-sind/releases/download/v0.1.1/sind_0.1.1_$(uname -s)_$(uname -m).tar.gz"
 
 $ tar xzf ./sind.tar.gz
 $ chmod a+x ./sind
