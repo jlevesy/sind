@@ -1,6 +1,10 @@
-DIST_DIR=dist
+DIST_DIR ?= dist
 
-all: build
+COMPOSE_FILE ?= $(CURDIR)/integration/docker-compose.yaml
+export COMPOSE_FILE
+
+.PHONY: all
+all: clean build test
 
 #
 #	Release targets
@@ -18,21 +22,19 @@ dry_release: clean
 # Test targets
 #
 
+.PHONY: test
 test: unit_test integration_test
 
 .phony: integration_test
 integration_test:
 	docker-compose \
-		-f ./integration/docker-compose.yaml \
 		build \
 		--build-arg UID=$(shell id -u) \
 		--build-arg GID=$(shell id -g)
 	docker-compose \
-		-f ./integration/docker-compose.yaml \
 		up --exit-code-from client client
 	docker-compose \
-		-f ./integration/docker-compose.yaml \
-		down -v
+		down -v --remove-orphans
 
 .PHONY: unit_test
 unit_test:
@@ -41,7 +43,7 @@ unit_test:
 		-cover \
 		-timeout=5s \
 		-run=$(T) \
-		$(shell go list ./... | grep -v integration)
+		$(shell go list $(CURDIR)/... | grep -v integration)
 
 .PHONY: lint
 lint:
@@ -55,20 +57,23 @@ lint:
 vendor:
 	go mod download
 
+.PHONY: install
 install:
-	mv ${DIST_DIR}/sind $${GOPATH}/bin/sind
+	mv $(DIST_DIR)/sind $(GOPATH)/bin/sind
 
+.PHONY: build
 build: clean dist binary
 
 .PHONY: binary
 binary:
-	CGO_ENABLED=0 go build -ldflags="-s -w"  -o ${DIST_DIR}/sind ./cmd/sind
+	CGO_ENABLED=0 go build -ldflags="-s -w"  -o $(DIST_DIR)/sind $(CURDIR)/cmd/sind
 
 dist:
-	mkdir -p ${DIST_DIR}
+	mkdir -p $(DIST_DIR)
 
+.PHONY: clean
 clean:
-	rm -rf ${DIST_DIR}
+	rm -rf $(DIST_DIR)
 
 #
 # Toolbox setup
@@ -83,7 +88,13 @@ toolbox: cachedirs
 		-f Dockerfile.toolbox .
 
 .PHONY: cachedirs
-cachedirs:
-	@mkdir -p .gocache/mod
-	@mkdir -p .gocache/build
+cachedirs: .gocache/mod .gocache/build
 
+.PHONY: clean-cachedirs
+	rm -rf $(CURDIR)/.gocache
+
+.gocache/mod:
+	@mkdir -p $(CURDIR)/.gocache/mod
+
+.gocache/build:
+	@mkdir -p $(CURDIR)/.gocache/build
