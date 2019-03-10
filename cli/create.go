@@ -15,7 +15,7 @@ var (
 	workers       int
 	networkName   string
 	portsMapping  []string
-	nodeImageName = string
+	nodeImageName string
 
 	createCmd = &cobra.Command{
 		Use:   "create",

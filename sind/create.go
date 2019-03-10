@@ -29,8 +29,12 @@ const (
 )
 
 const (
-	dockerDINDimage        = "docker:dind"
 	defaultSwarmListenAddr = "0.0.0.0:2377"
+)
+
+const (
+	// DefaultNodeImageName is the default image name to use for creating swarm nodes.
+	DefaultNodeImageName = "docker:18.09-dind"
 )
 
 // CreateClusterParams are args to pass to CreateCluster.
@@ -74,7 +78,7 @@ func (n *CreateClusterParams) imageName() string {
 		return n.ImageName
 	}
 
-	return dockerDINDimage
+	return DefaultNodeImageName
 }
 
 // CreateCluster creates a new swarm cluster.
