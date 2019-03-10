@@ -3,17 +3,19 @@ package cli
 import (
 	"context"
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
+
+	"github.com/spf13/cobra"
 
 	"github.com/jlevesy/go-sind/sind"
 )
 
 var (
-	managers     int
-	workers      int
-	networkName  string
-	portsMapping []string
+	managers      int
+	workers       int
+	networkName   string
+	portsMapping  []string
+	nodeImageName = string
 
 	createCmd = &cobra.Command{
 		Use:   "create",
@@ -29,6 +31,7 @@ func init() {
 	createCmd.Flags().IntVarP(&workers, "workers", "w", 0, "Amount of workers in the created cluster.")
 	createCmd.Flags().StringVarP(&networkName, "network_name", "n", "sind_default", "Name of the network to create.")
 	createCmd.Flags().StringSliceVarP(&portsMapping, "ports", "p", []string{}, "Ingress network port binding.")
+	createCmd.Flags().StringVarP(&nodeImageName, "image", "i", "docker:18.09-dind", "Name of the image to use for the nodes.")
 }
 
 func runCreate(cmd *cobra.Command, args []string) {
