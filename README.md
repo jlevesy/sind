@@ -15,20 +15,20 @@ Head to the [base example](./example/base/main.go)  or to the [integration test 
 
 ### Installation
 
-* Download the latest release for your platform from https://github.com/jlevesy/go-sind/releases
-* Untar the downloaded archive and move the binary somewhere on your PATH
+- Download the latest release for your platform from <https://github.com/jlevesy/go-sind/releases>
+- Untar the downloaded archive and move the binary somewhere on your PATH
 
-```
-$ curl -sSL -o sind.tar.gz "https://github.com/jlevesy/go-sind/releases/download/v0.1.1/sind_0.1.1_$(uname -s)_$(uname -m).tar.gz"
+```shell
+curl -sSL -o sind.tar.gz "https://github.com/jlevesy/go-sind/releases/download/v0.1.1/sind_0.1.1_$(uname -s)_$(uname -m).tar.gz"
 
-$ tar xzf ./sind.tar.gz
-$ chmod a+x ./sind
-$ mv ./sind /usr/local/bin/
+tar xzf ./sind.tar.gz
+chmod a+x ./sind
+mv ./sind /usr/local/bin/
 ```
 
 ### Usage
 
-```
+```shell
 # Will create a new cluster with 3 managers, 3 workers  and the port 8080 of the host bound
 # to the port 8080 of the ingress network of the cluster.
 sind create --managers=3 --workers=3 -p 8080:8080
@@ -47,6 +47,6 @@ unset DOCKER_HOST
 sind delete
 ```
 
-## Why ?
+## Why
 
 Mostly for automated testing.
