@@ -20,12 +20,12 @@ import (
 )
 
 // Errors.
-var (
-	ErrEmptyClusterName     = errors.New("empty cluster name")
-	ErrEmptyNetworkName     = errors.New("empty network name")
-	ErrInvalidManagersCount = errors.New("invalid manager count, must be >= 1")
-	ErrInvalidWorkerCount   = errors.New("invalid worker count, must be >= 0")
-	ErrPrimaryNodeNotBound  = errors.New("primary node is not exposing docker daemon port")
+const (
+	ErrEmptyClusterName     = "empty cluster name"
+	ErrEmptyNetworkName     = "empty network name"
+	ErrInvalidManagersCount = "invalid manager count, must be >= 1"
+	ErrInvalidWorkerCount   = "invalid worker count, must be >= 0"
+	ErrPrimaryNodeNotBound  = "primary node is not exposing docker daemon port"
 )
 
 const (
@@ -47,19 +47,19 @@ type CreateClusterParams struct {
 
 func (n *CreateClusterParams) validate() error {
 	if n.ClusterName == "" {
-		return ErrEmptyClusterName
+		return errors.New(ErrEmptyClusterName)
 	}
 
 	if n.NetworkName == "" {
-		return ErrEmptyNetworkName
+		return errors.New(ErrEmptyNetworkName)
 	}
 
 	if n.Managers < 1 {
-		return ErrInvalidManagersCount
+		return errors.New(ErrInvalidManagersCount)
 	}
 
 	if n.Workers < 0 {
-		return ErrInvalidWorkerCount
+		return errors.New(ErrInvalidWorkerCount)
 	}
 
 	return nil
@@ -368,11 +368,11 @@ func networkConfig(params CreateClusterParams, networkID string) *network.Networ
 func swarmPort(container types.ContainerJSON) (string, error) {
 	boundsPorts, ok := container.NetworkSettings.Ports["2375/tcp"]
 	if !ok {
-		return "", ErrPrimaryNodeNotBound
+		return "", errors.New(ErrPrimaryNodeNotBound)
 	}
 
 	if len(boundsPorts) == 0 {
-		return "", ErrPrimaryNodeNotBound
+		return "", errors.New(ErrPrimaryNodeNotBound)
 	}
 
 	return boundsPorts[0].HostPort, nil

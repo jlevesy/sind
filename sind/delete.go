@@ -12,8 +12,8 @@ import (
 )
 
 // Errors
-var (
-	ErrNetworkNotFound = errors.New("network not found")
+const (
+	ErrNetworkNotFound = "network not found"
 )
 
 // Delete will delete the cluster
@@ -79,7 +79,7 @@ func (c *Cluster) deleteNetwork(ctx context.Context) error {
 		return fmt.Errorf("unable to list cluster networks: %v", err)
 	}
 	if len(networks) == 0 {
-		return ErrNetworkNotFound
+		return errors.New(ErrNetworkNotFound)
 	}
 	var errg errgroup.Group
 	for _, network := range networks {

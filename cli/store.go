@@ -12,10 +12,10 @@ import (
 )
 
 // Errors.
-var (
-	ErrAlreadyExists      = errors.New("cluster already exists")
-	ErrMissingClusterName = errors.New("missing cluster name")
-	ErrClusterNotFound    = errors.New("cluster not found")
+const (
+	ErrAlreadyExists      = "cluster already exists"
+	ErrMissingClusterName = "missing cluster name"
+	ErrClusterNotFound    = "cluster not found"
 )
 
 // Store is in charge of storing and retrieving clusters.
@@ -69,7 +69,7 @@ func initStorageFile(path string) error {
 // ValidateName will return true if a cluster already have this name.
 func (s *Store) ValidateName(clusterName string) error {
 	if clusterName == "" {
-		return ErrMissingClusterName
+		return errors.New(ErrMissingClusterName)
 	}
 
 	clusters, err := s.readAll()
@@ -78,7 +78,7 @@ func (s *Store) ValidateName(clusterName string) error {
 	}
 
 	if _, ok := clusters[clusterName]; ok {
-		return ErrAlreadyExists
+		return errors.New(ErrAlreadyExists)
 	}
 
 	return nil
@@ -105,7 +105,7 @@ func (s *Store) Load(clusterName string) (*sind.Cluster, error) {
 
 	cluster, ok := clusters[clusterName]
 	if !ok {
-		return nil, ErrClusterNotFound
+		return nil, errors.New(ErrClusterNotFound)
 	}
 
 	return &cluster, nil
@@ -120,7 +120,7 @@ func (s *Store) Delete(clusterName string) error {
 
 	_, ok := clusters[clusterName]
 	if !ok {
-		return ErrClusterNotFound
+		return errors.New(ErrClusterNotFound)
 	}
 
 	delete(clusters, clusterName)
