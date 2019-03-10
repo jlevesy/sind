@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	clusterName = ""
+	clusterName string
 	timeout     = 30 * time.Second
 )
 
