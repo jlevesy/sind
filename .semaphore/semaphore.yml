@@ -14,7 +14,7 @@ blocks:
             - checkout
             - make toolbox
             - cache restore go-mod-$SEMAPHORE_GIT_BRANCH-$(checksum go.sum),go-mod-$SEMAPHORE_GIT_BRANCH,go-mod-master
-            - ./tool/box make vendor
+            - ./toolbox make vendor
             - cache store go-mod-$SEMAPHORE_GIT_BRANCH-$(checksum go.sum) ./.gocache
 
   - name: Test
@@ -27,10 +27,10 @@ blocks:
       jobs:
         - name: Lint
           commands:
-            - tool/box make lint
+            - ./toolbox make lint
         - name: Unit
           commands:
-            - tool/box make unit_test
+            - ./toolbox make unit_test
         - name: Integration
           commands:
             - make integration_test
