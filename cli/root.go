@@ -10,7 +10,7 @@ import (
 
 var (
 	clusterName string
-	timeout     = 30 * time.Second
+	timeout     time.Duration
 )
 
 var rootCmd = &cobra.Command{
@@ -21,7 +21,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.Flags().StringVarP(&clusterName, "cluster", "c", "sind_default", "Cluster name.")
-	rootCmd.Flags().DurationVarP(&timeout, "timeout", "t", timeout, "Command timeout.")
+	rootCmd.Flags().DurationVarP(&timeout, "timeout", "t", 30*time.Second, "Command timeout.")
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
