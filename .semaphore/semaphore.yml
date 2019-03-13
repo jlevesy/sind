@@ -8,20 +8,31 @@ agent:
 blocks:
   - name: Install dependencies
     task:
+      secrets:
+        - sind-gh-token
+      prologue:
+        commands:
+            - sudo curl -sfL https://raw.githubusercontent.com/mmatur/checkout-semaphoreci2/master/godownloader.sh | sudo bash -s -- -b $GOPATH/bin v0.0.3
+            - checkout-semaphoreci2 --owner=jlevesy --repo=go-sind --required.pr && CHECKOUT_EXIT=$?
+            - if [ ${CHECKOUT_EXIT} -eq 0 ]; then echo OK; else exit 0; fi
+            - cache restore go-mod-$SEMAPHORE_GIT_BRANCH-$(checksum go.sum),go-mod-$SEMAPHORE_GIT_BRANCH,go-mod-master
+            - make toolbox
       jobs:
         - name: make vendor and cache
           commands:
-            - checkout
-            - make toolbox
             - cache restore go-mod-$SEMAPHORE_GIT_BRANCH-$(checksum go.sum),go-mod-$SEMAPHORE_GIT_BRANCH,go-mod-master
             - ./toolbox make vendor
             - cache store go-mod-$SEMAPHORE_GIT_BRANCH-$(checksum go.sum) ./.gocache
 
   - name: Test
     task:
+      secrets:
+        - sind-gh-token
       prologue:
         commands:
-            - checkout
+            - sudo curl -sfL https://raw.githubusercontent.com/mmatur/checkout-semaphoreci2/master/godownloader.sh | sudo bash -s -- -b $GOPATH/bin v0.0.3
+            - checkout-semaphoreci2 --owner=jlevesy --repo=go-sind --required.pr && CHECKOUT_EXIT=$?
+            - if [ ${CHECKOUT_EXIT} -eq 0 ]; then echo OK; else exit 0; fi
             - cache restore go-mod-$SEMAPHORE_GIT_BRANCH-$(checksum go.sum),go-mod-$SEMAPHORE_GIT_BRANCH,go-mod-master
             - make toolbox
       jobs:
