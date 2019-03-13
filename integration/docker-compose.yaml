@@ -7,9 +7,9 @@ services:
       context: ../
       dockerfile: ./Dockerfile.toolbox
     volumes:
-      - ${PWD}:/go/src/github.com/jlevesy/go-sind
-      - ${PWD}/.gocache/mod:/go/pkg/mod
-      - ${PWD}/.gocache/build:/go/.cache/go-build
+      - ../:/go/src/github.com/jlevesy/go-sind
+      - ../.gocache/mod:/go/pkg/mod
+      - ../.gocache/build:/go/.cache/go-build
     environment:
       DOCKER_HOST: tcp://dind:2375
     depends_on:
