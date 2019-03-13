@@ -10,10 +10,10 @@ import (
 	"github.com/jlevesy/go-sind/sind"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 )
 
 func TestSindCanCreateACluster(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
 	t.Log("Creating cluster")
 	params := sind.CreateClusterParams{ClusterName: "test_swarm", NetworkName: "test_swarm", Managers: 3, Workers: 4}
@@ -53,8 +53,39 @@ func TestSindCanCreateACluster(t *testing.T) {
 	}
 }
 
+func TestSindCanCreateAClusterWithCustomImage(t *testing.T) {
+	ctx := context.Background()
+	t.Log("Creating cluster with custom image name")
+
+	params := sind.CreateClusterParams{ClusterName: "test_swarm", NetworkName: "test_swarm", Managers: 3, Workers: 4, ImageName: "docker:dind"}
+	cluster, err := sind.CreateCluster(ctx, params)
+	if err != nil {
+		t.Fatalf("unable to create cluster: %v", err)
+	}
+
+	defer func() {
+		if err = cluster.Delete(ctx); err != nil {
+			t.Fatalf("unable to delete cluster: %v", err)
+		}
+	}()
+
+	dockerCli, err := cluster.Host.Client()
+	if err != nil {
+		t.Fatalf("unable to get a docker client to the host: %v", err)
+	}
+
+	listFilters := filters.NewArgs(filters.Arg("ancestor", params.ImageName), filters.Arg("status", "running"))
+	runningContainers, err := dockerCli.ContainerList(ctx, types.ContainerListOptions{Filters: listFilters})
+	if err != nil {
+		t.Fatalf("unable to retrieve a list of running containers on the host: %v", err)
+	}
+
+	if len(runningContainers) != params.Managers+params.Workers {
+		t.Errorf("invalid amount of running containers based on the image %s. Expected: %d, Got: %d.", params.ImageName, params.Managers+params.Workers, len(runningContainers))
+	}
+}
+
 func TestSindCanCreateMultipleClusters(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
 	for i := 0; i < 3; i++ {
 		t.Log("Creating cluster n°", i)
@@ -78,7 +109,6 @@ func TestSindCanCreateMultipleClusters(t *testing.T) {
 }
 
 func TestSindCanPushAnImageToCluster(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
 	tag := "alpine:latest"
 
