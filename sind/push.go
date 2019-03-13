@@ -3,7 +3,6 @@ package sind
 import (
 	"archive/tar"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,8 +16,8 @@ import (
 )
 
 // Errors.
-var (
-	ErrImageReferenceNotFound = errors.New("image reference not found")
+const (
+	ErrImageReferenceNotFound = "image reference not found"
 )
 
 // PushImage pushes an image from the host to the cluster.

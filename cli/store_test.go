@@ -39,7 +39,7 @@ func TestStore(t *testing.T) {
 		t.Fatalf("unable to save cluster: %v", err)
 	}
 
-	if err = st.ValidateName(cluster.Name); err != ErrAlreadyExists {
+	if err = st.ValidateName(cluster.Name); err.Error() != ErrAlreadyExists {
 		t.Fatalf("unexpected error while validating cluster name: %v", err)
 	}
 

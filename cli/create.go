@@ -10,10 +10,10 @@ import (
 )
 
 var (
-	managers     = 0
-	workers      = 0
-	networkName  = ""
-	portsMapping = []string{}
+	managers     int
+	workers      int
+	networkName  string
+	portsMapping []string
 
 	createCmd = &cobra.Command{
 		Use:   "create",
