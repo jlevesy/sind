@@ -57,6 +57,7 @@ func runCreate(cmd *cobra.Command, args []string) {
 		NetworkName:  networkName,
 		ClusterName:  clusterName,
 		PortBindings: portsMapping,
+		ImageName:    nodeImageName,
 	}
 
 	cluster, err := sind.CreateCluster(ctx, clusterParams)
