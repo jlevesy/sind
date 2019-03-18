@@ -5,6 +5,7 @@ import (
 	"os"
 	"text/tabwriter"
 
+	"github.com/jlevesy/sind/pkg/store"
 	"github.com/spf13/cobra"
 )
 
@@ -22,12 +23,12 @@ func init() {
 }
 
 func runList(cmd *cobra.Command, args []string) {
-	store, err := NewStore()
+	st, err := store.New()
 	if err != nil {
 		fail("unable to create store: %v\n", err)
 	}
 
-	clusters, err := store.List()
+	clusters, err := st.List()
 	if err != nil {
 		fail("unable to list existing clusters: %v\n", err)
 	}

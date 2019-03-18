@@ -1,4 +1,4 @@
-module github.com/jlevesy/go-sind
+module github.com/jlevesy/sind
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect

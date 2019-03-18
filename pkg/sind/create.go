@@ -258,6 +258,10 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		return nil, fmt.Errorf("unable to build the cluster: %v", err)
 	}
 
+	if err = waitClusterReady(ctx, swarmClient, params.Managers, params.Workers); err != nil {
+		return nil, fmt.Errorf("unable to check swarm cluste: %v", err)
+	}
+
 	return &Cluster{
 		Name: params.ClusterName,
 		Cluster: Swarm{
@@ -287,8 +291,54 @@ func waitDaemonReady(ctx context.Context, client *docker.Client) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		}
-
 	}
+}
+
+func waitClusterReady(ctx context.Context, client *docker.Client, expectedManagers, expectedWorkers int) error {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			nodes, err := client.NodeList(ctx, types.NodeListOptions{})
+			if err != nil {
+				continue
+			}
+
+			managers, workers := countNodesPerRole(nodes)
+
+			if managers != expectedManagers {
+				continue
+			}
+
+			if workers != expectedWorkers {
+				continue
+			}
+
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+func countNodesPerRole(nodes []swarm.Node) (managersCount int, workersCount int) {
+	for _, node := range nodes {
+		// If the node is not ready then don't count it.
+		if node.Status.State != swarm.NodeStateReady {
+			continue
+		}
+
+		switch node.Spec.Role {
+		case swarm.NodeRoleManager:
+			managersCount++
+		case swarm.NodeRoleWorker:
+			workersCount++
+		}
+	}
+
+	return managersCount, workersCount
 }
 
 func execContainer(ctx context.Context, client *docker.Client, cID string, cmd []string) error {

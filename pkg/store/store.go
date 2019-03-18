@@ -1,4 +1,4 @@
-package cli
+package store
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"github.com/jlevesy/go-sind/sind"
+	"github.com/jlevesy/sind/pkg/sind"
 )
 
 // Errors.
@@ -25,8 +25,8 @@ type Store struct {
 
 type clusters map[string]sind.Cluster
 
-// NewStore creates and initializes a store.
-func NewStore() (*Store, error) {
+// New creates and initializes a store.
+func New() (*Store, error) {
 	usr, err := user.Current()
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize configuration store: %v", err)
@@ -66,8 +66,8 @@ func initStorageFile(path string) error {
 	return nil
 }
 
-// ValidateName will return true if a cluster already have this name.
-func (s *Store) ValidateName(clusterName string) error {
+// Exists will return true if a cluster already have this name.
+func (s *Store) Exists(clusterName string) error {
 	if clusterName == "" {
 		return errors.New(ErrMissingClusterName)
 	}

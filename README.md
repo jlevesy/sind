@@ -15,7 +15,7 @@ Head to the [base example](./example/base/main.go)  or to the [integration test 
 
 ### Installation
 
-- Download the latest release for your platform from <https://github.com/jlevesy/go-sind/releases>
+- Download the latest release for your platform from <https://github.com/jlevesy/sind/releases>
 - Untar the downloaded archive and move the binary somewhere on your PATH
 
 ```shell
@@ -47,6 +47,6 @@ unset DOCKER_HOST
 sind delete
 ```
 
-## Why
+## Why ?
 
 Mostly for automated testing.

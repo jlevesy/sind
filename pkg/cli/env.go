@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 
+	"github.com/jlevesy/sind/pkg/store"
 	"github.com/spf13/cobra"
 )
 
@@ -19,12 +20,12 @@ func init() {
 }
 
 func runEnv(cmd *cobra.Command, args []string) {
-	store, err := NewStore()
+	st, err := store.New()
 	if err != nil {
 		fail("unable to create store: %v\n", err)
 	}
 
-	cluster, err := store.Load(clusterName)
+	cluster, err := st.Load(clusterName)
 	if err != nil {
 		fail("unable to load cluster: %v\n", err)
 	}
