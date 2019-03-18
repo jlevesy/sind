@@ -1,11 +1,58 @@
+---
 version: 2
 jobs:
-  build:
+  vendor:
+    working_directory: ~/sind
     docker:
       - image: circleci/golang:1.12.1
         environment:
-          GO111MODULE= "on"
-
-    working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
+          GO111MODULE: "on"
     steps:
-      - run: echo "Success"
+      - checkout
+      - run: make download
+      - run: make vendor
+      - save_cache:
+          key: sind-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - ~/sind
+
+  integration_test:
+    machine:
+      enabled: true
+    working_directory: ~/sind
+    steps:
+      - restore_cache:
+          keys:
+            - sind-{{ .Environment.CIRCLE_SHA1 }}
+      - run: make ci_integration_test
+
+  unit_test:
+    docker:
+      - image: circleci/golang:1.12.1
+    working_directory: /go/src/github.com/jlevesy/sind
+    steps:
+      - restore_cache:
+          keys:
+            - sind-{{ .Environment.CIRCLE_SHA1 }}
+      - run: mv ~/sind /go/src/github.com/jlevesy
+      - run:
+          command: |
+            curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.15.0
+            sudo mv ./bin/golangci-lint $GOPATH/bin
+            rm -rf ./bin
+            golangci-lint --version
+      - run: make lint
+      - run: make unit_test
+      - run: make binary
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - vendor
+      - unit_test:
+          requires:
+            - vendor
+      - integration_test:
+          requires:
+            - vendor

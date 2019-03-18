@@ -38,7 +38,7 @@ unit_test:
 		-cover \
 		-timeout=5s \
 		-run=$(T) \
-		$(shell go list $(CURDIR)/... | grep -v pkg/test)
+		$(shell go list ./... | grep -v pkg/test)
 
 .PHONY: lint
 lint:
@@ -48,13 +48,24 @@ lint:
 clean_docker:
 	-docker rm -f $(shell docker ps -a -q)
 
+.PHONY: ci_integration_test
+ci_integration_test:
+	docker-compose -f ./pkg/test/docker-compose.yaml up -d docker
+	sleep 5
+	docker-compose -f ./pkg/test/docker-compose.yaml up --exit-code-from="runner" runner
+	docker-compose -f ./pkg/test/docker-compose.yaml down -v --remove-orphans
+
 #
 # Build targets
 #
 
+.PHONY: download
+download:
+	go mod download
+
 .PHONY: vendor
 vendor:
-	go mod download
+	go mod vendor
 
 .PHONY: install
 install:
@@ -65,7 +76,7 @@ build: clean dist binary
 
 .PHONY: binary
 binary:
-	CGO_ENABLED=0 go build -ldflags="-s -w"  -o $(DIST_DIR)/sind $(CURDIR)/cmd/sind
+	CGO_ENABLED=0 go build -ldflags="-s -w"  -o $(DIST_DIR)/sind ./cmd/sind
 
 dist:
 	mkdir -p $(DIST_DIR)
