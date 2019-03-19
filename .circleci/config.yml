@@ -20,11 +20,30 @@ jobs:
     machine:
       enabled: true
     working_directory: ~/sind
+    environment:
+      GO_VERSION: 1.12.1
+      GO_OS: linux
+      GO_ARCH: amd64
     steps:
       - restore_cache:
           keys:
             - sind-{{ .Environment.CIRCLE_SHA1 }}
-      - run: make ci_integration_test
+      - run:
+          name: Install and Setup Go
+          command: |
+            curl -sSfLO https://dl.google.com/go/go${GO_VERSION}.${GO_OS}-${GO_ARCH}.tar.gz -o go.tgz
+            echo "2a3fdabf665496a0db5f41ec6af7a9b15a49fbe71a85a50ca38b1f13a103aeec *go.tgz" | sha256sum -c -;
+            tar -C /usr/local -xzf go.tgz
+            rm go.tgz
+            echo 'export GOPATH=/go' >> $BASH_ENV
+            echo 'export PATH $GOPATH/bin:/usr/local/go/bin:$PATH' >> $BASH_ENV
+            source $BASH_ENV
+            mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
+      - run:
+          name: Run Integration Tests
+          command: |
+            source $BASH_ENV
+            make integration_test
 
   unit_test:
     docker:
