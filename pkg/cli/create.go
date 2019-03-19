@@ -16,6 +16,7 @@ var (
 	networkName   string
 	portsMapping  []string
 	nodeImageName string
+	pull          bool
 
 	createCmd = &cobra.Command{
 		Use:   "create",
@@ -32,6 +33,7 @@ func init() {
 	createCmd.Flags().StringVarP(&networkName, "network_name", "n", "sind_default", "Name of the network to create.")
 	createCmd.Flags().StringSliceVarP(&portsMapping, "ports", "p", []string{}, "Ingress network port binding.")
 	createCmd.Flags().StringVarP(&nodeImageName, "image", "i", "docker:18.09-dind", "Name of the image to use for the nodes.")
+	createCmd.Flags().BoolVarP(&pull, "pull", "", false, "Force pull image.")
 }
 
 func runCreate(cmd *cobra.Command, args []string) {
@@ -58,6 +60,7 @@ func runCreate(cmd *cobra.Command, args []string) {
 		ClusterName:  clusterName,
 		PortBindings: portsMapping,
 		ImageName:    nodeImageName,
+		ForcePull:    pull,
 	}
 
 	cluster, err := sind.CreateCluster(ctx, clusterParams)

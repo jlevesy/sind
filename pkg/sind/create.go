@@ -12,6 +12,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/swarm"
 	docker "github.com/docker/docker/client"
@@ -46,6 +47,7 @@ type CreateClusterParams struct {
 	Workers  int
 
 	ImageName    string
+	ForcePull    bool
 	PortBindings []string
 }
 
@@ -92,14 +94,18 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		return nil, fmt.Errorf("unable to create docker client: %v", err)
 	}
 
-	out, err := hostClient.ImagePull(ctx, params.imageName(), types.ImagePullOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("unable to pull the %s image: %v", params.imageName(), err)
-	}
-	defer out.Close()
+	imageExist := imageAlreadyExist(ctx, hostClient, params.imageName())
 
-	if _, err = io.Copy(ioutil.Discard, out); err != nil {
-		return nil, fmt.Errorf("unable to pull the %s image: %v", params.imageName(), err)
+	if params.ForcePull || !imageExist {
+		out, err := hostClient.ImagePull(ctx, params.imageName(), types.ImagePullOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("unable to pull the %s image: %v", params.imageName(), err)
+		}
+		defer out.Close()
+
+		if _, err = io.Copy(ioutil.Discard, out); err != nil {
+			return nil, fmt.Errorf("unable to pull the %s image: %v", params.imageName(), err)
+		}
 	}
 
 	net, err := hostClient.NetworkCreate(
@@ -273,6 +279,24 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 			// TODO support TLS information ?
 		},
 	}, nil
+}
+
+func imageAlreadyExist(ctx context.Context, client *docker.Client, imageName string) bool {
+	fil := filters.NewArgs()
+	fil.Add("reference", imageName)
+	imageList, err := client.ImageList(ctx, types.ImageListOptions{
+		All:     true,
+		Filters: fil,
+	})
+	if err != nil {
+		return false
+	}
+
+	if len(imageList) > 0 {
+		return true
+	}
+
+	return false
 }
 
 func waitDaemonReady(ctx context.Context, client *docker.Client) error {
