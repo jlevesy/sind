@@ -137,6 +137,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 			PortBindings:    nat.PortMap(portBindings),
 		},
 		networkConfig(params, net.ID),
+		"manager-0",
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create the primary node: %v", err)
@@ -170,6 +171,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		},
 		&container.HostConfig{Privileged: true},
 		networkConfig(params, net.ID),
+		"manager",
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create manager nodes: %v", err)
@@ -188,6 +190,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		},
 		&container.HostConfig{Privileged: true},
 		networkConfig(params, net.ID),
+		"worker",
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create worker nodes: %v", err)
@@ -350,13 +353,14 @@ func execContainer(ctx context.Context, client *docker.Client, cID string, cmd [
 	return client.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{})
 }
 
-func runContainer(ctx context.Context, client *docker.Client, cConfig *container.Config, hConfig *container.HostConfig, nConfig *network.NetworkingConfig) (string, error) {
+func runContainer(ctx context.Context, client *docker.Client, cConfig *container.Config, hConfig *container.HostConfig, nConfig *network.NetworkingConfig, name string) (string, error) {
+	cConfig.Hostname = name
 	resp, err := client.ContainerCreate(
 		ctx,
 		cConfig,
 		hConfig,
 		nConfig,
-		"",
+		name,
 	)
 	if err != nil {
 		return "", err
@@ -368,8 +372,8 @@ func runContainer(ctx context.Context, client *docker.Client, cConfig *container
 	return resp.ID, nil
 }
 
-func runContainers(ctx context.Context, client *docker.Client, totalToCreate int, cConfig *container.Config, hConfig *container.HostConfig, nConfig *network.NetworkingConfig) ([]string, error) {
-	result := []string{}
+func runContainers(ctx context.Context, client *docker.Client, totalToCreate int, cConfig *container.Config, hConfig *container.HostConfig, nConfig *network.NetworkingConfig, namePrefix string) ([]string, error) {
+	var result []string
 
 	if totalToCreate == 0 {
 		return result, nil
@@ -381,8 +385,9 @@ func runContainers(ctx context.Context, client *docker.Client, totalToCreate int
 	containerCreated := make(chan string, totalToCreate)
 
 	for i := 0; i < totalToCreate; i++ {
+		name := fmt.Sprintf("%s-%d", namePrefix, i+1)
 		go func() {
-			cID, err := runContainer(ctx, client, cConfig, hConfig, nConfig)
+			cID, err := runContainer(ctx, client, cConfig, hConfig, nConfig, name)
 			if err != nil {
 				creationErrors <- err
 			}
