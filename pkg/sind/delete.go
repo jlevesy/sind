@@ -11,12 +11,13 @@ import (
 	"github.com/docker/docker/api/types/filters"
 )
 
-// Errors
+// Errors.
 const (
 	ErrNetworkNotFound = "network not found"
 )
 
-// Delete will delete the cluster
+// Delete deletes the cluster.
+// It removes all containers and the network.
 func (c *Cluster) Delete(ctx context.Context) error {
 	// deleteContainers
 	if err := c.deleteContainers(ctx); err != nil {

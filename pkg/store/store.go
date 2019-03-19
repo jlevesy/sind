@@ -66,7 +66,7 @@ func initStorageFile(path string) error {
 	return nil
 }
 
-// Exists will return true if a cluster already have this name.
+// Exists returns an error if a cluster already exists.
 func (s *Store) Exists(clusterName string) error {
 	if clusterName == "" {
 		return errors.New(ErrMissingClusterName)
@@ -84,7 +84,7 @@ func (s *Store) Exists(clusterName string) error {
 	return nil
 }
 
-// Save will persist a new cluster.
+// Save persists a given cluster.
 func (s *Store) Save(cluster sind.Cluster) error {
 	clusters, err := s.readAll()
 	if err != nil {
@@ -96,7 +96,7 @@ func (s *Store) Save(cluster sind.Cluster) error {
 	return s.writeAll(clusters)
 }
 
-// Load will return a cluster according to its name.
+// Load returns a cluster according to given name.
 func (s *Store) Load(clusterName string) (*sind.Cluster, error) {
 	clusters, err := s.readAll()
 	if err != nil {
@@ -111,7 +111,7 @@ func (s *Store) Load(clusterName string) (*sind.Cluster, error) {
 	return &cluster, nil
 }
 
-// Delete will delete a cluster from configuration.
+// Delete deletes a persisted cluster.
 func (s *Store) Delete(clusterName string) error {
 	clusters, err := s.readAll()
 	if err != nil {
@@ -128,7 +128,7 @@ func (s *Store) Delete(clusterName string) error {
 	return s.writeAll(clusters)
 }
 
-// List will return all existing clusters.
+// List returns all existing clusters.
 func (s *Store) List() ([]sind.Cluster, error) {
 	clusters, err := s.readAll()
 	if err != nil {
