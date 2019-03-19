@@ -48,13 +48,6 @@ lint:
 clean_docker:
 	-docker rm -f $(shell docker ps -a -q)
 
-.PHONY: ci_integration_test
-ci_integration_test:
-	docker-compose -f ./pkg/test/docker-compose.yaml up -d docker
-	sleep 5
-	docker-compose -f ./pkg/test/docker-compose.yaml up --exit-code-from="runner" runner
-	docker-compose -f ./pkg/test/docker-compose.yaml down -v --remove-orphans
-
 #
 # Build targets
 #
