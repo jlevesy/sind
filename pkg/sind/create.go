@@ -47,7 +47,7 @@ type CreateClusterParams struct {
 	Workers  int
 
 	ImageName    string
-	ForcePull    bool
+	PullImage    bool
 	PortBindings []string
 }
 
@@ -96,7 +96,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 
 	imageExist := imageAlreadyExist(ctx, hostClient, params.imageName())
 
-	if params.ForcePull || !imageExist {
+	if params.PullImage || !imageExist {
 		out, err := hostClient.ImagePull(ctx, params.imageName(), types.ImagePullOptions{})
 		if err != nil {
 			return nil, fmt.Errorf("unable to pull the %s image: %v", params.imageName(), err)
