@@ -1,16 +1,13 @@
-package integration
+package test
 
 import (
 	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"testing"
-
-	"github.com/jlevesy/go-sind/sind"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/jlevesy/sind/pkg/sind"
 )
 
 func TestSindCanCreateACluster(t *testing.T) {
@@ -105,40 +102,5 @@ func TestSindCanCreateMultipleClusters(t *testing.T) {
 				t.Fatalf("unable to delete cluster: %v", err)
 			}
 		}()
-	}
-}
-
-func TestSindCanPushAnImageToCluster(t *testing.T) {
-	ctx := context.Background()
-	tag := "alpine:latest"
-
-	params := sind.CreateClusterParams{ClusterName: "test", NetworkName: "test_swarm", Managers: 1}
-	cluster, err := sind.CreateCluster(ctx, params)
-	if err != nil {
-		t.Fatalf("unable to create cluster: %v", err)
-	}
-	defer func() {
-		if err = cluster.Delete(ctx); err != nil {
-			t.Fatalf("unable to delete cluster: %v", err)
-		}
-	}()
-
-	hostClient, err := cluster.Host.Client()
-	if err != nil {
-		t.Fatalf("unable to get a docker client: %v", err)
-	}
-
-	out, err := hostClient.ImagePull(ctx, tag, types.ImagePullOptions{})
-	if err != nil {
-		t.Fatalf("unable to pull the %s image: %v", tag, err)
-	}
-	defer out.Close()
-
-	if _, err := io.Copy(ioutil.Discard, out); err != nil {
-		t.Fatalf("unable to pull the %s image: %v", tag, err)
-	}
-
-	if err = cluster.PushImage(ctx, []string{tag}); err != nil {
-		t.Fatalf("unable to deploy the %s image to the cluster: %v", tag, err)
 	}
 }

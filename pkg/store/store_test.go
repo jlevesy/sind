@@ -1,4 +1,4 @@
-package cli
+package store
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/jlevesy/go-sind/sind"
+	"github.com/jlevesy/sind/pkg/sind"
 )
 
 func prepareStore() (*Store, func(), error) {
@@ -39,7 +39,7 @@ func TestStore(t *testing.T) {
 		t.Fatalf("unable to save cluster: %v", err)
 	}
 
-	if err = st.ValidateName(cluster.Name); err.Error() != ErrAlreadyExists {
+	if err = st.Exists(cluster.Name); err.Error() != ErrAlreadyExists {
 		t.Fatalf("unexpected error while validating cluster name: %v", err)
 	}
 

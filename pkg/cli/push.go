@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jlevesy/sind/pkg/store"
 	"github.com/spf13/cobra"
 )
 
@@ -24,12 +25,12 @@ func runPush(cmd *cobra.Command, args []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	store, err := NewStore()
+	st, err := store.New()
 	if err != nil {
 		fail("unable to create store: %v\n", err)
 	}
 
-	cluster, err := store.Load(clusterName)
+	cluster, err := st.Load(clusterName)
 	if err != nil {
 		fail("unable to load cluster: %v\n", err)
 	}

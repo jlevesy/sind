@@ -30,7 +30,7 @@ func (c *Cluster) clusterLabel() string {
 	return fmt.Sprintf("%s=%s", clusterNameLabel, c.Name)
 }
 
-// ContainerList will return the lists of containers.
+// ContainerList returns the lists of containers.
 func (c *Cluster) ContainerList(ctx context.Context) ([]types.Container, error) {
 	client, err := c.Host.Client()
 	if err != nil {
@@ -56,12 +56,12 @@ type Swarm struct {
 	client *docker.Client
 }
 
-// DockerHost will return the host to use to communicate with the swarm cluster.
+// DockerHost returns the host to use to communicate with the swarm cluster.
 func (s *Swarm) DockerHost() string {
 	return fmt.Sprintf("tcp://%s:%s", s.Host, s.Port)
 }
 
-// Client will return a instance of the docker client.
+// Client returns a instance of the docker client.
 func (s *Swarm) Client() (*docker.Client, error) {
 	if s.client != nil {
 		return s.client, nil
@@ -81,14 +81,14 @@ func (s *Swarm) Client() (*docker.Client, error) {
 	return client, nil
 }
 
-// Docker are the informations required ot connect to the host daemon.
+// Docker represents the informations required ot connect to the host daemon.
 type Docker struct {
 	Host string
 
 	client *docker.Client
 }
 
-// Client will return a instance of the docker client.
+// Client returns a docker client, configured to communicate with the host dameon.
 func (d *Docker) Client() (*docker.Client, error) {
 	if d.client != nil {
 		return d.client, nil

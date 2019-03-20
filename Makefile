@@ -1,8 +1,5 @@
 DIST_DIR ?= dist
 
-COMPOSE_FILE ?= $(CURDIR)/integration/docker-compose.yaml
-export COMPOSE_FILE
-
 .PHONY: all
 all: clean build test
 
@@ -23,18 +20,16 @@ dry_release: clean
 #
 
 .PHONY: test
-test: unit_test integration_test
+test: lint unit_test integration_test
 
-.phony: integration_test
-integration_test:
-	docker-compose \
-		build \
-		--build-arg UID=$(shell id -u) \
-		--build-arg GID=$(shell id -g)
-	docker-compose \
-		up --exit-code-from client client
-	docker-compose \
-		down -v --remove-orphans
+.PHONY: integration_test
+integration_test: clean_docker
+	go test \
+		-count=1 \
+		-v \
+		-timeout=5m \
+		-run=$(T) \
+		./pkg/test
 
 .PHONY: unit_test
 unit_test:
@@ -43,19 +38,27 @@ unit_test:
 		-cover \
 		-timeout=5s \
 		-run=$(T) \
-		$(shell go list $(CURDIR)/... | grep -v integration)
+		$(shell go list ./... | grep -v pkg/test)
 
 .PHONY: lint
 lint:
 	golangci-lint run
 
+.PHONY: clean_docker
+clean_docker:
+	-docker rm -f $(shell docker ps -a -q)
+
 #
 # Build targets
 #
 
+.PHONY: download
+download:
+	go mod download
+
 .PHONY: vendor
 vendor:
-	go mod download
+	go mod vendor
 
 .PHONY: install
 install:
@@ -66,7 +69,7 @@ build: clean dist binary
 
 .PHONY: binary
 binary:
-	CGO_ENABLED=0 go build -ldflags="-s -w"  -o $(DIST_DIR)/sind $(CURDIR)/cmd/sind
+	CGO_ENABLED=0 go build -ldflags="-s -w"  -o $(DIST_DIR)/sind ./cmd/sind
 
 dist:
 	mkdir -p $(DIST_DIR)
@@ -74,27 +77,3 @@ dist:
 .PHONY: clean
 clean:
 	rm -rf $(DIST_DIR)
-
-#
-# Toolbox setup
-#
-
-.PHONY: toolbox
-toolbox: cachedirs
-	docker build \
-		--build-arg=UID=$(shell id -u) \
-		--build-arg=GID=$(shell id -g) \
-		-t go-sind-toolbox \
-		-f Dockerfile.toolbox .
-
-.PHONY: cachedirs
-cachedirs: .gocache/mod .gocache/build
-
-.PHONY: clean-cachedirs
-	rm -rf $(CURDIR)/.gocache
-
-.gocache/mod:
-	@mkdir -p $(CURDIR)/.gocache/mod
-
-.gocache/build:
-	@mkdir -p $(CURDIR)/.gocache/build

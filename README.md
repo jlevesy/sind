@@ -1,5 +1,7 @@
 # sind
 
+[![CircleCI](https://circleci.com/gh/jlevesy/sind.svg?style=svg)](https://circleci.com/gh/jlevesy/sind)
+
 `sind` enables you to create swarm clusters on a docker host using SIND (swarm in docker).
 
 ## Requirements
@@ -9,17 +11,17 @@
 
 ## Using it as a go package
 
-Head to the [base example](./example/base/main.go)  or to the [integration test suite](./integration/sind_test.go) to get started.
+Head to the [example](./cmd/example/main.go)  or to the [integration test suite](./pkg/test) to get started.
 
 ## Using it as a CLI
 
 ### Installation
 
-- Download the latest release for your platform from <https://github.com/jlevesy/go-sind/releases>
+- Download the latest release for your platform from <https://github.com/jlevesy/sind/releases>
 - Untar the downloaded archive and move the binary somewhere on your PATH
 
 ```shell
-curl -sSL -o sind.tar.gz "https://github.com/jlevesy/go-sind/releases/download/v0.1.1/sind_0.1.1_$(uname -s)_$(uname -m).tar.gz"
+curl -sSL -o sind.tar.gz "https://github.com/jlevesy/go-sind/releases/download/v0.2.1/sind_0.2.1_$(uname -s)_$(uname -m).tar.gz"
 
 tar xzf ./sind.tar.gz
 chmod a+x ./sind
@@ -47,6 +49,6 @@ unset DOCKER_HOST
 sind delete
 ```
 
-## Why
+## Why ?
 
 Mostly for automated testing.

@@ -1,11 +1,82 @@
+---
 version: 2
 jobs:
-  build:
+  cache:
+    working_directory: ~/sind
     docker:
       - image: circleci/golang:1.12.1
         environment:
-          GO111MODULE= "on"
-
-    working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
+          GO111MODULE: "on"
     steps:
-      - run: echo "Success"
+      - checkout
+      - run: make download
+      - run: make vendor
+      - save_cache:
+          key: sind-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - ~/sind
+
+  integration_test:
+    machine:
+      enabled: true
+    working_directory: ~/sind
+    steps:
+      - run:
+          name: Install and Setup Go
+          command: |
+            curl -sSfL https://dl.google.com/go/go1.12.1.linux-amd64.tar.gz -o go.tgz
+            echo "2a3fdabf665496a0db5f41ec6af7a9b15a49fbe71a85a50ca38b1f13a103aeec *go.tgz" | sha256sum -c -
+            mkdir -p "${HOME}/local"
+            tar --overwrite -C "${HOME}"/local -xzf go.tgz
+            rm go.tgz
+            echo 'export GOPATH="${HOME}"/go' >> "${BASH_ENV}"
+            echo 'export PATH="${GOPATH}"/bin:"${HOME}"/local/go/bin:$PATH' >> "${BASH_ENV}"
+            source "${BASH_ENV}"
+            mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
+      - restore_cache:
+          keys:
+            - sind-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Move repository under GOPATH
+          command: |
+            source "${BASH_ENV}"
+            mkdir -p "${GOPATH}/src/github.com/jlevesy"
+            mv ~/sind "${GOPATH}/src/github.com/jlevesy"
+      - run:
+          name: Run Integration Tests
+          command: |
+            source "${BASH_ENV}"
+            cd "${GOPATH}/src/github.com/jlevesy/sind"
+            make integration_test
+
+  unit_test:
+    docker:
+      - image: circleci/golang:1.12.1
+    working_directory: /go/src/github.com/jlevesy/sind
+    steps:
+      - restore_cache:
+          keys:
+            - sind-{{ .Environment.CIRCLE_SHA1 }}
+      - run: mv ~/sind /go/src/github.com/jlevesy
+      - run:
+          name: "Install golangci-lint"
+          command: |
+            curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.15.0
+            sudo mv ./bin/golangci-lint $GOPATH/bin
+            rm -rf ./bin
+            golangci-lint --version
+      - run: make lint
+      - run: make unit_test
+      - run: make binary
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - cache
+      - unit_test:
+          requires:
+            - cache
+      - integration_test:
+          requires:
+            - cache

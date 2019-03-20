@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jlevesy/sind/pkg/sind"
+	"github.com/jlevesy/sind/pkg/store"
 	"github.com/spf13/cobra"
-
-	"github.com/jlevesy/go-sind/sind"
 )
 
 var (
@@ -40,13 +40,13 @@ func runCreate(cmd *cobra.Command, args []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	store, err := NewStore()
+	st, err := store.New()
 	if err != nil {
 		fmt.Printf("unable to create store: %v\n", err)
 		os.Exit(1)
 	}
 
-	if err := store.ValidateName(clusterName); err != nil {
+	if err := st.Exists(clusterName); err != nil {
 		fmt.Printf("invalid cluster name: %v\n", err)
 		os.Exit(1)
 	}
@@ -66,7 +66,7 @@ func runCreate(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	if err = store.Save(*cluster); err != nil {
+	if err = st.Save(*cluster); err != nil {
 		fmt.Printf("unable to save cluster: %v\n", err)
 		os.Exit(1)
 	}
