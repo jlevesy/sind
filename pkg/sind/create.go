@@ -137,7 +137,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 			PortBindings:    nat.PortMap(portBindings),
 		},
 		networkConfig(params, net.ID),
-		"manager-0",
+		fmt.Sprintf("%s-manager-0", params.ClusterName),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create the primary node: %v", err)
@@ -171,7 +171,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		},
 		&container.HostConfig{Privileged: true},
 		networkConfig(params, net.ID),
-		"manager",
+		fmt.Sprintf("%s-manager", params.ClusterName),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create manager nodes: %v", err)
@@ -190,7 +190,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		},
 		&container.HostConfig{Privileged: true},
 		networkConfig(params, net.ID),
-		"worker",
+		fmt.Sprintf("%s-worker", params.ClusterName),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create worker nodes: %v", err)
