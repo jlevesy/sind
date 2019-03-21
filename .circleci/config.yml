@@ -69,6 +69,18 @@ jobs:
       - run: make unit_test
       - run: make binary
 
+  release:
+    docker:
+      - image: circleci/golang:1.12.1
+    working_directory: /go/src/github.com/jlevesy/sind
+    steps:
+      - restore_cache:
+          keys:
+            - sind-{{ .Environment.CIRCLE_SHA1 }}
+      - run: mv ~/sind /go/src/github.com/jlevesy
+      - run: curl -sL https://git.io/goreleaser | bash
+      - run: make release
+
 workflows:
   version: 2
   build_and_test:
@@ -80,3 +92,9 @@ workflows:
       - integration_test:
           requires:
             - cache
+      - release:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /v[0-9]+(\.[0-9]+)*(-.*)*/
