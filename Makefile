@@ -23,7 +23,7 @@ dry_release: clean
 test: lint unit_test integration_test
 
 .PHONY: integration_test
-integration_test: clean_docker
+integration_test:
 	go test \
 		-count=1 \
 		-v \
