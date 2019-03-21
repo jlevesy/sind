@@ -40,8 +40,9 @@ const (
 
 // CreateClusterParams are args to pass to CreateCluster.
 type CreateClusterParams struct {
-	ClusterName string
-	NetworkName string
+	ClusterName   string
+	NetworkName   string
+	NetworkSubnet string
 
 	Managers int
 	Workers  int
@@ -108,10 +109,19 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		}
 	}
 
+	var ipam *network.IPAM
+	if params.NetworkSubnet != "" {
+		ipam = &network.IPAM{
+			Config: []network.IPAMConfig{
+				{Subnet: params.NetworkSubnet},
+			},
+		}
+	}
 	net, err := hostClient.NetworkCreate(
 		ctx,
 		params.NetworkName,
 		types.NetworkCreate{
+			IPAM: ipam,
 			Labels: map[string]string{
 				clusterNameLabel: params.ClusterName,
 			},
@@ -130,6 +140,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		ctx,
 		hostClient,
 		&container.Config{
+			Hostname:     fmt.Sprintf("%s-manager-0", params.ClusterName),
 			Image:        params.imageName(),
 			ExposedPorts: nat.PortSet(exposedPorts),
 			Labels: map[string]string{
@@ -378,7 +389,6 @@ func execContainer(ctx context.Context, client *docker.Client, cID string, cmd [
 }
 
 func runContainer(ctx context.Context, client *docker.Client, cConfig *container.Config, hConfig *container.HostConfig, nConfig *network.NetworkingConfig, name string) (string, error) {
-	cConfig.Hostname = name
 	resp, err := client.ContainerCreate(
 		ctx,
 		cConfig,

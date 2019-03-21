@@ -14,6 +14,7 @@ var (
 	managers      int
 	workers       int
 	networkName   string
+	networkSubnet string
 	portsMapping  []string
 	nodeImageName string
 	pull          bool
@@ -31,6 +32,7 @@ func init() {
 	createCmd.Flags().IntVarP(&managers, "managers", "m", 1, "Amount of managers in the created cluster.")
 	createCmd.Flags().IntVarP(&workers, "workers", "w", 0, "Amount of workers in the created cluster.")
 	createCmd.Flags().StringVarP(&networkName, "network_name", "n", "sind_default", "Name of the network to create.")
+	createCmd.Flags().StringVarP(&networkSubnet, "network_subnet", "s", "", "Subnet in CIDR format that represents a network segment.")
 	createCmd.Flags().StringSliceVarP(&portsMapping, "ports", "p", []string{}, "Ingress network port binding.")
 	createCmd.Flags().StringVarP(&nodeImageName, "image", "i", "docker:18.09-dind", "Name of the image to use for the nodes.")
 	createCmd.Flags().BoolVarP(&pull, "pull", "", false, "Pull node image before creating the cluster.")
@@ -54,13 +56,14 @@ func runCreate(cmd *cobra.Command, args []string) {
 	}
 
 	clusterParams := sind.CreateClusterParams{
-		Managers:     managers,
-		Workers:      workers,
-		NetworkName:  networkName,
-		ClusterName:  clusterName,
-		PortBindings: portsMapping,
-		ImageName:    nodeImageName,
-		PullImage:    pull,
+		Managers:      managers,
+		Workers:       workers,
+		NetworkName:   networkName,
+		NetworkSubnet: networkSubnet,
+		ClusterName:   clusterName,
+		PortBindings:  portsMapping,
+		ImageName:     nodeImageName,
+		PullImage:     pull,
 	}
 
 	cluster, err := sind.CreateCluster(ctx, clusterParams)

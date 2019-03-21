@@ -104,3 +104,55 @@ func TestSindCanCreateMultipleClusters(t *testing.T) {
 		}()
 	}
 }
+
+func TestSindCanCreateAClusterWithCustomSubnet(t *testing.T) {
+	ctx := context.Background()
+	t.Log("Creating cluster with custom subnet")
+
+	params := sind.CreateClusterParams{
+		ClusterName:   "test_swarm",
+		NetworkName:   "test_swarm",
+		Managers:      3,
+		Workers:       4,
+		NetworkSubnet: "10.7.0.0/24",
+	}
+	cluster, err := sind.CreateCluster(ctx, params)
+	if err != nil {
+		t.Fatalf("unable to create cluster: %v", err)
+	}
+
+	defer func() {
+		if err = cluster.Delete(ctx); err != nil {
+			t.Fatalf("unable to delete cluster: %v", err)
+		}
+	}()
+
+	dockerClient, err := cluster.Host.Client()
+	if err != nil {
+		t.Fatalf("unable to get a docker client to the host: %v", err)
+	}
+
+	networks, err := dockerClient.NetworkList(
+		ctx,
+		types.NetworkListOptions{
+			Filters: filters.NewArgs(filters.Arg("name", params.NetworkName)),
+		},
+	)
+	if err != nil {
+		t.Fatalf("unable to get the network list: %v", err)
+	}
+
+	if len(networks) != 1 {
+		t.Fatalf("invalid number of networks, expected 1, got %d", len(networks))
+	}
+
+	net := networks[0]
+
+	if len(net.IPAM.Config) != 1 {
+		t.Fatalf("invalid number of IPAM configs, expected 1, got %d", len(net.IPAM.Config))
+	}
+
+	if net.IPAM.Config[0].Subnet != params.NetworkSubnet {
+		t.Errorf("invalid IPAM subnet, expected %s, got %s", params.NetworkSubnet, net.IPAM.Config[0].Subnet)
+	}
+}
