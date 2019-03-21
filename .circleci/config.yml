@@ -93,6 +93,9 @@ workflows:
           requires:
             - cache
       - release:
+          requires:
+            - unit_test
+            - integration_test
           filters:
             branches:
               ignore: /.*/
