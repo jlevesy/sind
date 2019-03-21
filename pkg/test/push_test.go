@@ -9,62 +9,45 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/jlevesy/sind/pkg/sind"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSindCanPushAnImageToCluster(t *testing.T) {
 	ctx := context.Background()
 	tag := "alpine:latest"
 
-	params := sind.CreateClusterParams{ClusterName: "test", NetworkName: "test_swarm", Managers: 1}
+	params := sind.CreateClusterParams{ClusterName: "test_push", NetworkName: "test_push", Managers: 1}
 	cluster, err := sind.CreateCluster(ctx, params)
-	if err != nil {
-		t.Fatalf("unable to create cluster: %v", err)
-	}
+	require.NoError(t, err)
+
 	defer func() {
-		if err = cluster.Delete(ctx); err != nil {
-			t.Fatalf("unable to delete cluster: %v", err)
-		}
+		require.NoError(t, cluster.Delete(ctx))
 	}()
 
 	hostClient, err := cluster.Host.Client()
-	if err != nil {
-		t.Fatalf("unable to get a docker client: %v", err)
-	}
+	require.NoError(t, err)
 
 	out, err := hostClient.ImagePull(ctx, tag, types.ImagePullOptions{})
-	if err != nil {
-		t.Fatalf("unable to pull the %s image: %v", tag, err)
-	}
+	require.NoError(t, err)
 	defer out.Close()
 
-	if _, err := io.Copy(ioutil.Discard, out); err != nil {
-		t.Fatalf("unable to pull the %s image: %v", tag, err)
-	}
+	_, err = io.Copy(ioutil.Discard, out)
+	require.NoError(t, err)
 
-	if err = cluster.PushImage(ctx, []string{tag}); err != nil {
-		t.Fatalf("unable to push the %s image to the cluster: %v", tag, err)
-	}
+	require.NoError(t, cluster.PushImage(ctx, []string{tag}))
 
 	swarmClient, err := cluster.Cluster.Client()
-	if err != nil {
-		t.Fatalf("unable to get a swarm client: %v", err)
-	}
+	require.NoError(t, err)
 
 	imgs, err := swarmClient.ImageList(
 		ctx,
 		types.ImageListOptions{Filters: filters.NewArgs(filters.Arg("reference", tag))},
 	)
-	if err != nil {
-		t.Fatalf("unable to fetch images from swarm cluster: %v", err)
-	}
-
-	if len(imgs) != 1 {
-		t.Fatalf("expected to have one image deployed to the cluster, got %d", len(imgs))
-	}
+	require.NoError(t, err)
+	require.Len(t, imgs, 1)
 
 	img := imgs[0]
 
-	if img.RepoTags[0] != tag {
-		t.Fatalf("invalid tag found, expected %s got %s", tag, img.RepoTags[0])
-	}
+	assert.Equal(t, img.RepoTags[0], tag)
 }

@@ -5,10 +5,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/jlevesy/sind/pkg/sind"
+	"github.com/stretchr/testify/require"
 )
 
 func prepareStore() (*Store, func(), error) {
@@ -28,53 +28,31 @@ func prepareStore() (*Store, func(), error) {
 
 func TestStore(t *testing.T) {
 	st, cleanup, err := prepareStore()
-	if err != nil {
-		t.Fatalf("unable to prepare test store: %v", err)
-	}
+	require.NoError(t, err)
 	defer cleanup()
 
 	cluster := sind.Cluster{Name: "test_0", Host: sind.Docker{Host: "unix://var/run/docker.sock"}}
 
-	if err = st.Save(cluster); err != nil {
-		t.Fatalf("unable to save cluster: %v", err)
-	}
+	require.NoError(t, st.Save(cluster))
 
-	if err = st.Exists(cluster.Name); err.Error() != ErrAlreadyExists {
-		t.Fatalf("unexpected error while validating cluster name: %v", err)
-	}
+	err = st.Exists(cluster.Name)
+	require.Error(t, err)
+	require.Equal(t, err.Error(), ErrAlreadyExists)
 
 	readCluster, err := st.Load(cluster.Name)
-	if err != nil {
-		t.Fatalf("unable to load cluster by name: %v", err)
-	}
+	require.NoError(t, err)
 
-	if !reflect.DeepEqual(*readCluster, cluster) {
-		t.Fatalf("read cluster setup differs from intitial config, %+v, %+v", *readCluster, cluster)
-	}
+	require.Equal(t, *readCluster, cluster)
 
 	clusters, err := st.List()
-	if err != nil {
-		t.Fatalf("unable to list clusters: %v", err)
-	}
+	require.NoError(t, err)
+	require.Len(t, clusters, 1)
+	require.Equal(t, clusters[0], cluster)
 
-	if len(clusters) != 1 {
-		t.Fatalf("unexpected count of clusters, expected 1 got: %d", len(clusters))
-	}
-
-	if !reflect.DeepEqual(clusters[0], cluster) {
-		t.Fatalf("read cluster setup differs from intitial config, %+v, %+v", clusters[0], cluster)
-	}
-
-	if err = st.Delete(cluster.Name); err != nil {
-		t.Fatalf("unable to delete cluster: %v", err)
-	}
+	require.NoError(t, st.Delete(cluster.Name))
 
 	clusters, err = st.List()
-	if err != nil {
-		t.Fatalf("unable to list clusters: %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(clusters) != 0 {
-		t.Fatalf("unexpected count of clusters, expected 0 got: %d", len(clusters))
-	}
+	require.Len(t, clusters, 0)
 }
