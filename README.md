@@ -1,6 +1,7 @@
 # sind
 
 [![CircleCI](https://circleci.com/gh/jlevesy/sind.svg?style=svg)](https://circleci.com/gh/jlevesy/sind)
+[![Go Report Card](https://goreportcard.com/badge/github.com/jlevesy/sind)](https://goreportcard.com/report/github.com/jlevesy/sind)
 
 `sind` enables you to create swarm clusters on a docker host using SIND (swarm in docker).
 
