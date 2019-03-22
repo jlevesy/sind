@@ -1,63 +1,55 @@
 ---
 version: 2
 jobs:
-  cache:
+  install:
     working_directory: ~/sind
     docker:
       - image: circleci/golang:1.12.1
-        environment:
-          GO111MODULE: "on"
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - go-mod-v1-{{ checksum "go.sum" }}
       - run: make download
-      - run: make vendor
       - save_cache:
-          key: sind-{{ .Environment.CIRCLE_SHA1 }}
+          key: go-mod-v1-{{ checksum "go.sum" }}
           paths:
-            - ~/sind
+            - "/go/pkg/mod"
 
   integration_test:
     machine:
       enabled: true
     working_directory: ~/sind
     steps:
+      - checkout
       - run:
           name: Install and Setup Go
           command: |
+            sudo rm -rf /usr/local/go
             curl -sSfL https://dl.google.com/go/go1.12.1.linux-amd64.tar.gz -o go.tgz
             echo "2a3fdabf665496a0db5f41ec6af7a9b15a49fbe71a85a50ca38b1f13a103aeec *go.tgz" | sha256sum -c -
-            mkdir -p "${HOME}/local"
-            tar --overwrite -C "${HOME}"/local -xzf go.tgz
+            sudo tar --overwrite -C /usr/local -xzf go.tgz
             rm go.tgz
-            echo 'export GOPATH="${HOME}"/go' >> "${BASH_ENV}"
-            echo 'export PATH="${GOPATH}"/bin:"${HOME}"/local/go/bin:$PATH' >> "${BASH_ENV}"
-            source "${BASH_ENV}"
-            mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
+            sudo mkdir -p "/go/{pkg/mod,src,bin}" && sudo chmod -R 777 /go
+            echo 'export GOPATH=/go' >> "${BASH_ENV}"
       - restore_cache:
           keys:
-            - sind-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Move repository under GOPATH
-          command: |
-            source "${BASH_ENV}"
-            mkdir -p "${GOPATH}/src/github.com/jlevesy"
-            mv ~/sind "${GOPATH}/src/github.com/jlevesy"
+            - go-mod-v1-{{ checksum "go.sum" }}
       - run:
           name: Run Integration Tests
           command: |
             source "${BASH_ENV}"
-            cd "${GOPATH}/src/github.com/jlevesy/sind"
             make integration_test
 
   unit_test:
     docker:
       - image: circleci/golang:1.12.1
-    working_directory: /go/src/github.com/jlevesy/sind
+    working_directory: ~/sind
     steps:
+      - checkout
       - restore_cache:
           keys:
-            - sind-{{ .Environment.CIRCLE_SHA1 }}
-      - run: mv ~/sind /go/src/github.com/jlevesy
+            - go-mod-v1-{{ checksum "go.sum" }}
       - run:
           name: "Install golangci-lint"
           command: |
@@ -72,12 +64,12 @@ jobs:
   release:
     docker:
       - image: circleci/golang:1.12.1
-    working_directory: /go/src/github.com/jlevesy/sind
+    working_directory: ~/sind
     steps:
+      - checkout
       - restore_cache:
           keys:
-            - sind-{{ .Environment.CIRCLE_SHA1 }}
-      - run: mv ~/sind /go/src/github.com/jlevesy
+            - go-mod-v1-{{ checksum "go.sum" }}
       - run: curl -sL https://git.io/goreleaser | bash
       - run: make release
 
@@ -85,7 +77,7 @@ workflows:
   version: 2
   main:
     jobs:
-      - cache:
+      - install:
           filters:
             tags:
               only: /v[0-9]+(\.[0-9]+)*(-.*)*/
@@ -94,13 +86,13 @@ workflows:
             tags:
               only: /v[0-9]+(\.[0-9]+)*(-.*)*/
           requires:
-            - cache
+            - install
       - integration_test:
           filters:
             tags:
               only: /v[0-9]+(\.[0-9]+)*(-.*)*/
           requires:
-            - cache
+            - install
       - release:
           requires:
             - unit_test
