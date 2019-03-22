@@ -69,7 +69,7 @@ build: clean dist binary
 
 .PHONY: binary
 binary:
-	CGO_ENABLED=0 go build -ldflags="-s -w"  -o $(DIST_DIR)/sind ./cmd/sind
+	CGO_ENABLED=0 go build -ldflags='-s -w -X "github.com/jlevesy/sind/pkg/cli.version=custom-$(shell git rev-parse --short HEAD)" ' -o $(DIST_DIR)/sind ./cmd/sind
 
 dist:
 	mkdir -p $(DIST_DIR)
