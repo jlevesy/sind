@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/url"
 	"strings"
 	"time"
@@ -117,7 +118,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 			},
 		}
 	}
-	net, err := hostClient.NetworkCreate(
+	sindNet, err := hostClient.NetworkCreate(
 		ctx,
 		params.NetworkName,
 		types.NetworkCreate{
@@ -154,7 +155,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 			PublishAllPorts: true,
 			PortBindings:    nat.PortMap(portBindings),
 		},
-		networkConfig(params, net.ID),
+		networkConfig(params, sindNet.ID),
 		primaryNodeName,
 	)
 	if err != nil {
@@ -189,7 +190,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 			},
 		},
 		&container.HostConfig{Privileged: true},
-		networkConfig(params, net.ID),
+		networkConfig(params, sindNet.ID),
 		fmt.Sprintf("%s-manager", params.ClusterName),
 	)
 	if err != nil {
@@ -209,7 +210,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 			},
 		},
 		&container.HostConfig{Privileged: true},
-		networkConfig(params, net.ID),
+		networkConfig(params, sindNet.ID),
 		fmt.Sprintf("%s-worker", params.ClusterName),
 	)
 	if err != nil {
@@ -238,7 +239,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 	}
 
 	var errg errgroup.Group
-	managerAddr := fmt.Sprintf("%s:2377", primaryNodeCID[0:12])
+	managerAddr := net.JoinHostPort(primaryNodeCID[0:12], "2377")
 	for _, managerID := range managerNodeCIDs {
 		cid := managerID
 		errg.Go(func() error {
