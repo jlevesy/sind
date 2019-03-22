@@ -71,7 +71,6 @@ jobs:
           keys:
             - go-mod-v1-{{ checksum "go.sum" }}
       - run: curl -sL https://git.io/goreleaser | bash
-      - run: make release
 
 workflows:
   version: 2
