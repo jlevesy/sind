@@ -1,12 +1,9 @@
 project_name: sind
-before:
-  hooks:
-    - go mod download
 builds:
   - main: ./cmd/sind/main.go
     binary: sind
     ldflags:
-      - "-s -w"
+      - -s -w -X "github.com/jlevesy/sind/pkg/cli.version={{ .Version }}"
     env:
     - CGO_ENABLED=0
 archive:
