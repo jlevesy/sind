@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/url"
 	"strings"
 	"time"
@@ -117,7 +118,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 			},
 		}
 	}
-	net, err := hostClient.NetworkCreate(
+	sindNet, err := hostClient.NetworkCreate(
 		ctx,
 		params.NetworkName,
 		types.NetworkCreate{
@@ -136,11 +137,12 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		return nil, fmt.Errorf("unable to define port bindings: %v", err)
 	}
 
+	primaryNodeName := fmt.Sprintf("%s-manager-0", params.ClusterName)
 	primaryNodeCID, err := runContainer(
 		ctx,
 		hostClient,
 		&container.Config{
-			Hostname:     fmt.Sprintf("%s-manager-0", params.ClusterName),
+			Hostname:     primaryNodeName,
 			Image:        params.imageName(),
 			ExposedPorts: nat.PortSet(exposedPorts),
 			Labels: map[string]string{
@@ -153,8 +155,8 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 			PublishAllPorts: true,
 			PortBindings:    nat.PortMap(portBindings),
 		},
-		networkConfig(params, net.ID),
-		fmt.Sprintf("%s-manager-0", params.ClusterName),
+		networkConfig(params, sindNet.ID),
+		primaryNodeName,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create the primary node: %v", err)
@@ -178,6 +180,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 	managerNodeCIDs, err := runContainers(
 		ctx,
 		hostClient,
+		1,
 		params.managersToRun(),
 		&container.Config{
 			Image: params.imageName(),
@@ -187,7 +190,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 			},
 		},
 		&container.HostConfig{Privileged: true},
-		networkConfig(params, net.ID),
+		networkConfig(params, sindNet.ID),
 		fmt.Sprintf("%s-manager", params.ClusterName),
 	)
 	if err != nil {
@@ -197,6 +200,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 	workerNodeCIDs, err := runContainers(
 		ctx,
 		hostClient,
+		0,
 		params.Workers,
 		&container.Config{
 			Image: params.imageName(),
@@ -206,7 +210,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 			},
 		},
 		&container.HostConfig{Privileged: true},
-		networkConfig(params, net.ID),
+		networkConfig(params, sindNet.ID),
 		fmt.Sprintf("%s-worker", params.ClusterName),
 	)
 	if err != nil {
@@ -235,7 +239,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 	}
 
 	var errg errgroup.Group
-	managerAddr := fmt.Sprintf("%s:2377", primaryNodeCID[0:12])
+	managerAddr := net.JoinHostPort(primaryNodeCID[0:12], "2377")
 	for _, managerID := range managerNodeCIDs {
 		cid := managerID
 		errg.Go(func() error {
@@ -406,7 +410,7 @@ func runContainer(ctx context.Context, client *docker.Client, cConfig *container
 	return resp.ID, nil
 }
 
-func runContainers(ctx context.Context, client *docker.Client, totalToCreate int, cConfig *container.Config, hConfig *container.HostConfig, nConfig *network.NetworkingConfig, namePrefix string) ([]string, error) {
+func runContainers(ctx context.Context, client *docker.Client, offset, totalToCreate int, cConfig *container.Config, hConfig *container.HostConfig, nConfig *network.NetworkingConfig, namePrefix string) ([]string, error) {
 	var result []string
 
 	if totalToCreate == 0 {
@@ -419,7 +423,7 @@ func runContainers(ctx context.Context, client *docker.Client, totalToCreate int
 	containerCreated := make(chan string, totalToCreate)
 
 	for i := 0; i < totalToCreate; i++ {
-		name := fmt.Sprintf("%s-%d", namePrefix, i+1)
+		name := fmt.Sprintf("%s-%d", namePrefix, i+offset)
 		go func() {
 			cID, err := runContainer(ctx, client, cConfig, hConfig, nConfig, name)
 			if err != nil {
