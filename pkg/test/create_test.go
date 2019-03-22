@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/docker/docker/api/types"
@@ -37,6 +38,45 @@ func TestSindCanCreateACluster(t *testing.T) {
 
 	assert.Equal(t, info.Swarm.Managers, params.Managers)
 	assert.Equal(t, info.Swarm.Nodes-info.Swarm.Managers, params.Workers)
+}
+
+func TestSindNameContainersCorrectly(t *testing.T) {
+	ctx := context.Background()
+	params := sind.CreateClusterParams{
+		ClusterName: "test_name",
+		NetworkName: "test_name",
+		Managers:    3,
+		Workers:     4,
+	}
+	cluster, err := sind.CreateCluster(ctx, params)
+	require.NoError(t, err)
+
+	defer func() {
+		require.NoError(t, cluster.Delete(ctx))
+	}()
+
+	runningContainers, err := cluster.ContainerList(ctx)
+	require.NoError(t, err)
+
+	require.Len(t, runningContainers, params.Managers+params.Workers)
+	var containerNames []string
+	for _, container := range runningContainers {
+		containerNames = append(containerNames, container.Names...)
+	}
+
+	expected := []string{
+		"/test_name-manager-0",
+		"/test_name-manager-1",
+		"/test_name-manager-2",
+		"/test_name-worker-0",
+		"/test_name-worker-1",
+		"/test_name-worker-2",
+		"/test_name-worker-3",
+	}
+
+	sort.Strings(containerNames)
+	sort.Strings(expected)
+	assert.Equal(t, containerNames, expected)
 }
 
 func TestSindCanCreateAClusterWithCustomImage(t *testing.T) {
