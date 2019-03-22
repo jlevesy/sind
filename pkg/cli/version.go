@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/spf13/cobra"
 )
@@ -23,5 +24,6 @@ func init() {
 }
 
 func runVersion(cmd *cobra.Command, args []string) {
-	fmt.Println(version)
+	fmt.Printf("Version: %s\n", version)
+	fmt.Printf("Go version: %s\n", runtime.Version()[2:])
 }
