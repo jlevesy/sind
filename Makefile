@@ -7,10 +7,6 @@ all: clean build test
 #	Release targets
 #
 
-.PHONY: release
-release: clean
-	goreleaser
-
 .PHONY: dry_release
 dry_release: clean
 	goreleaser --skip-publish
