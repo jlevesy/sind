@@ -249,13 +249,13 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		return nil, fmt.Errorf("unable to collect join tokens: %v", err)
 	}
 
-	var errg errgroup.Group
+	errg, groupCtx := errgroup.WithContext(ctx)
 	managerAddr := net.JoinHostPort(primaryNodeCID[0:12], "2377")
 	for _, managerID := range managerNodeCIDs {
 		cid := managerID
 		errg.Go(func() error {
 			return execContainer(
-				ctx,
+				groupCtx,
 				hostClient,
 				cid,
 				[]string{
@@ -274,7 +274,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		cid := workerID
 		errg.Go(func() error {
 			return execContainer(
-				ctx,
+				groupCtx,
 				hostClient,
 				cid,
 				[]string{

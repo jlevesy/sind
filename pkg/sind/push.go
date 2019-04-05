@@ -38,11 +38,11 @@ func (c *Cluster) PushImage(ctx context.Context, refs []string) error {
 		return fmt.Errorf("unable to get container list %v", err)
 	}
 
-	var errg errgroup.Group
+	errg, groupCtx := errgroup.WithContext(ctx)
 	for _, container := range containers {
 		cID := container.ID
 		errg.Go(func() error {
-			return copyToContainer(ctx, hostClient, archivePath, cID)
+			return copyToContainer(groupCtx, hostClient, archivePath, cID)
 		})
 	}
 
@@ -50,12 +50,12 @@ func (c *Cluster) PushImage(ctx context.Context, refs []string) error {
 		return fmt.Errorf("unable to deploy the image to host: %v", err)
 	}
 
-	errg = errgroup.Group{}
+	errg, groupCtx = errgroup.WithContext(ctx)
 	for _, container := range containers {
 		cID := container.ID
 		errg.Go(func() error {
 			return execContainer(
-				ctx,
+				groupCtx,
 				hostClient,
 				cID,
 				[]string{
