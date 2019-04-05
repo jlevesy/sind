@@ -150,12 +150,11 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 
 	managerNameGenerator := nameGenerator{pattern: params.ClusterName + "-manager-%d"}
 	workerNameGenerator := nameGenerator{pattern: params.ClusterName + "-worker-%d"}
-	primaryNodeName := managerNameGenerator.generateName()
 	primaryNodeCID, err := runContainer(
 		ctx,
 		hostClient,
 		container.Config{
-			Hostname:     primaryNodeName,
+			Hostname:     managerNameGenerator.generateName(),
 			Image:        params.imageName(),
 			ExposedPorts: nat.PortSet(exposedPorts),
 			Labels: map[string]string{
@@ -169,7 +168,6 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 			PortBindings:    nat.PortMap(portBindings),
 		},
 		networkConfig(params, sindNet.ID),
-		primaryNodeName,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create the primary node: %v", err)
@@ -403,13 +401,13 @@ func execContainer(ctx context.Context, client *docker.Client, cID string, cmd [
 	return client.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{})
 }
 
-func runContainer(ctx context.Context, client *docker.Client, cConfig container.Config, hConfig container.HostConfig, nConfig network.NetworkingConfig, name string) (string, error) {
+func runContainer(ctx context.Context, client *docker.Client, cConfig container.Config, hConfig container.HostConfig, nConfig network.NetworkingConfig) (string, error) {
 	resp, err := client.ContainerCreate(
 		ctx,
 		&cConfig,
 		&hConfig,
 		&nConfig,
-		name,
+		cConfig.Hostname,
 	)
 	if err != nil {
 		return "", err
@@ -429,7 +427,7 @@ func runContainers(ctx context.Context, client *docker.Client, totalToCreate int
 		cName := nameGen.generateName()
 		errg.Go(func() error {
 			cConfig.Hostname = cName
-			cID, err := runContainer(groupCtx, client, cConfig, hConfig, nConfig, cName)
+			cID, err := runContainer(groupCtx, client, cConfig, hConfig, nConfig)
 			if err != nil {
 				return err
 			}
