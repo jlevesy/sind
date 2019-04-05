@@ -85,6 +85,17 @@ func (n *CreateClusterParams) imageName() string {
 	return DefaultNodeImageName
 }
 
+type nameGenerator struct {
+	pattern string
+	index   int
+}
+
+func (n *nameGenerator) generateName() string {
+	v := fmt.Sprintf(n.pattern, n.index)
+	n.index++
+	return v
+}
+
 // CreateCluster creates a new swarm cluster.
 func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, error) {
 	if err := params.validate(); err != nil {
@@ -137,11 +148,13 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 		return nil, fmt.Errorf("unable to define port bindings: %v", err)
 	}
 
-	primaryNodeName := fmt.Sprintf("%s-manager-0", params.ClusterName)
+	managerNameGenerator := nameGenerator{pattern: params.ClusterName + "-manager-%d"}
+	workerNameGenerator := nameGenerator{pattern: params.ClusterName + "-worker-%d"}
+	primaryNodeName := managerNameGenerator.generateName()
 	primaryNodeCID, err := runContainer(
 		ctx,
 		hostClient,
-		&container.Config{
+		container.Config{
 			Hostname:     primaryNodeName,
 			Image:        params.imageName(),
 			ExposedPorts: nat.PortSet(exposedPorts),
@@ -150,7 +163,7 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 				clusterRoleLabel: primaryNode,
 			},
 		},
-		&container.HostConfig{
+		container.HostConfig{
 			Privileged:      true,
 			PublishAllPorts: true,
 			PortBindings:    nat.PortMap(portBindings),
@@ -180,18 +193,17 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 	managerNodeCIDs, err := runContainers(
 		ctx,
 		hostClient,
-		1,
 		params.managersToRun(),
-		&container.Config{
+		container.Config{
 			Image: params.imageName(),
 			Labels: map[string]string{
 				clusterNameLabel: params.ClusterName,
 				clusterRoleLabel: managerNode,
 			},
 		},
-		&container.HostConfig{Privileged: true},
+		container.HostConfig{Privileged: true},
 		networkConfig(params, sindNet.ID),
-		fmt.Sprintf("%s-manager", params.ClusterName),
+		managerNameGenerator,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create manager nodes: %v", err)
@@ -200,18 +212,17 @@ func CreateCluster(ctx context.Context, params CreateClusterParams) (*Cluster, e
 	workerNodeCIDs, err := runContainers(
 		ctx,
 		hostClient,
-		0,
 		params.Workers,
-		&container.Config{
+		container.Config{
 			Image: params.imageName(),
 			Labels: map[string]string{
 				clusterNameLabel: params.ClusterName,
 				clusterRoleLabel: workerNode,
 			},
 		},
-		&container.HostConfig{Privileged: true},
+		container.HostConfig{Privileged: true},
 		networkConfig(params, sindNet.ID),
-		fmt.Sprintf("%s-worker", params.ClusterName),
+		workerNameGenerator,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create worker nodes: %v", err)
@@ -392,12 +403,12 @@ func execContainer(ctx context.Context, client *docker.Client, cID string, cmd [
 	return client.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{})
 }
 
-func runContainer(ctx context.Context, client *docker.Client, cConfig *container.Config, hConfig *container.HostConfig, nConfig *network.NetworkingConfig, name string) (string, error) {
+func runContainer(ctx context.Context, client *docker.Client, cConfig container.Config, hConfig container.HostConfig, nConfig network.NetworkingConfig, name string) (string, error) {
 	resp, err := client.ContainerCreate(
 		ctx,
-		cConfig,
-		hConfig,
-		nConfig,
+		&cConfig,
+		&hConfig,
+		&nConfig,
 		name,
 	)
 	if err != nil {
@@ -410,50 +421,41 @@ func runContainer(ctx context.Context, client *docker.Client, cConfig *container
 	return resp.ID, nil
 }
 
-func runContainers(ctx context.Context, client *docker.Client, offset, totalToCreate int, cConfig *container.Config, hConfig *container.HostConfig, nConfig *network.NetworkingConfig, namePrefix string) ([]string, error) {
-	var result []string
-
-	if totalToCreate == 0 {
-		return result, nil
-	}
-
-	containersCreatedCount := 0
-
-	creationErrors := make(chan error)
-	containerCreated := make(chan string, totalToCreate)
+func runContainers(ctx context.Context, client *docker.Client, totalToCreate int, cConfig container.Config, hConfig container.HostConfig, nConfig network.NetworkingConfig, nameGen nameGenerator) ([]string, error) {
+	errg, groupCtx := errgroup.WithContext(ctx)
+	cIDs := make(chan string, totalToCreate)
 
 	for i := 0; i < totalToCreate; i++ {
-		name := fmt.Sprintf("%s-%d", namePrefix, i+offset)
-		go func() {
-			cID, err := runContainer(ctx, client, cConfig, hConfig, nConfig, name)
+		cName := nameGen.generateName()
+		errg.Go(func() error {
+			cConfig.Hostname = cName
+			cID, err := runContainer(groupCtx, client, cConfig, hConfig, nConfig, cName)
 			if err != nil {
-				creationErrors <- err
+				return err
 			}
 
-			containerCreated <- cID
-		}()
+			cIDs <- cID
+			return nil
+		})
 	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case err := <-creationErrors:
-			return nil, err
-		case cid := <-containerCreated:
-			result = append(result, cid)
-			containersCreatedCount++
-			if containersCreatedCount != totalToCreate {
-				continue
-			}
-
-			return result, nil
-		}
+	if err := errg.Wait(); err != nil {
+		return nil, err
 	}
+
+	close(cIDs)
+
+	var result []string
+
+	for cID := range cIDs {
+		result = append(result, cID)
+	}
+
+	return result, nil
 }
 
-func networkConfig(params CreateClusterParams, networkID string) *network.NetworkingConfig {
-	return &network.NetworkingConfig{
+func networkConfig(params CreateClusterParams, networkID string) network.NetworkingConfig {
+	return network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
 			params.NetworkName: {
 				NetworkID: networkID,
