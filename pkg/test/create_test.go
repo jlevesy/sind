@@ -40,7 +40,7 @@ func TestSindCanCreateACluster(t *testing.T) {
 	assert.Equal(t, info.Swarm.Nodes-info.Swarm.Managers, params.Workers)
 }
 
-func TestSindNameContainersCorrectly(t *testing.T) {
+func TestSindConfiguresContainersCorrectly(t *testing.T) {
 	ctx := context.Background()
 	params := sind.CreateClusterParams{
 		ClusterName: "test_name",
@@ -55,16 +55,23 @@ func TestSindNameContainersCorrectly(t *testing.T) {
 		require.NoError(t, cluster.Delete(ctx))
 	}()
 
+	hostClient, err := cluster.Host.Client()
+	require.NoError(t, err)
+
 	runningContainers, err := cluster.ContainerList(ctx)
 	require.NoError(t, err)
 
 	require.Len(t, runningContainers, params.Managers+params.Workers)
 	var containerNames []string
+	var hostnames []string
 	for _, container := range runningContainers {
 		containerNames = append(containerNames, container.Names...)
+		containerInfo, err := hostClient.ContainerInspect(ctx, container.ID)
+		require.NoError(t, err)
+		hostnames = append(hostnames, containerInfo.Config.Hostname)
 	}
 
-	expected := []string{
+	expectedContainerNames := []string{
 		"/test_name-manager-0",
 		"/test_name-manager-1",
 		"/test_name-manager-2",
@@ -74,9 +81,23 @@ func TestSindNameContainersCorrectly(t *testing.T) {
 		"/test_name-worker-3",
 	}
 
+	expectedHostnames := []string{
+		"test_name-manager-0",
+		"test_name-manager-1",
+		"test_name-manager-2",
+		"test_name-worker-0",
+		"test_name-worker-1",
+		"test_name-worker-2",
+		"test_name-worker-3",
+	}
+
 	sort.Strings(containerNames)
-	sort.Strings(expected)
-	assert.Equal(t, containerNames, expected)
+	sort.Strings(expectedContainerNames)
+	sort.Strings(expectedHostnames)
+	sort.Strings(hostnames)
+
+	assert.Equal(t, containerNames, expectedContainerNames)
+	assert.Equal(t, hostnames, expectedHostnames)
 }
 
 func TestSindCanCreateAClusterWithCustomImage(t *testing.T) {

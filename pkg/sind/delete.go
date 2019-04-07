@@ -42,12 +42,12 @@ func (c *Cluster) deleteContainers(ctx context.Context) error {
 		return fmt.Errorf("unable to get container list: %v", err)
 	}
 
-	var errg errgroup.Group
+	errg, groupCtx := errgroup.WithContext(ctx)
 	for _, container := range containers {
 		cid := container.ID
 		errg.Go(func() error {
 			return client.ContainerRemove(
-				ctx,
+				groupCtx,
 				cid,
 				types.ContainerRemoveOptions{
 					Force:         true,
@@ -82,11 +82,12 @@ func (c *Cluster) deleteNetwork(ctx context.Context) error {
 	if len(networks) == 0 {
 		return errors.New(ErrNetworkNotFound)
 	}
-	var errg errgroup.Group
+
+	errg, groupCtx := errgroup.WithContext(ctx)
 	for _, network := range networks {
 		netID := network.ID
 		errg.Go(func() error {
-			return client.NetworkRemove(ctx, netID)
+			return client.NetworkRemove(groupCtx, netID)
 		})
 	}
 
