@@ -39,6 +39,7 @@ func (c *Cluster) ContainerList(ctx context.Context) ([]types.Container, error) 
 
 	containers, err := client.ContainerList(ctx, types.ContainerListOptions{
 		Filters: filters.NewArgs(filters.Arg("label", c.clusterLabel())),
+		All:     true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("unable to get container list: %v", err)
