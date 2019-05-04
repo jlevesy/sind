@@ -17,7 +17,7 @@ func (l imageListerMock) ImageList(ctx context.Context, opts types.ImageListOpti
 	return l(ctx, opts)
 }
 
-func TestImageAlreadyPresent(t *testing.T) {
+func TestImageExists(t *testing.T) {
 	testCases := []struct {
 		desc           string
 		images         []types.ImageSummary
@@ -54,7 +54,7 @@ func TestImageAlreadyPresent(t *testing.T) {
 				return test.images, test.listError
 			})
 
-			res, err := ImageAlreadyPresent(ctx, mock, "foo")
+			res, err := ImageExists(ctx, mock, "foo")
 			assert.True(t, sentOpts.All)
 			assert.True(t, sentOpts.Filters.ExactMatch(imageFilterReference, "foo"))
 			assert.Equal(t, test.expectedError, err)

@@ -18,8 +18,8 @@ type imageLister interface {
 	ImageList(context.Context, types.ImageListOptions) ([]types.ImageSummary, error)
 }
 
-// ImageAlreadyPresent returns true if given image ref is already present on the docker host.
-func ImageAlreadyPresent(ctx context.Context, docker imageLister, imageRef string) (bool, error) {
+// ImageExists returns true if given image ref exists on the docker host.
+func ImageExists(ctx context.Context, docker imageLister, imageRef string) (bool, error) {
 	imageList, err := docker.ImageList(ctx, types.ImageListOptions{
 		All:     true,
 		Filters: filters.NewArgs(filters.Arg(imageFilterReference, imageRef)),

@@ -32,7 +32,7 @@ func PrimaryContainer(ctx context.Context, docker containerLister, clusterName s
 	containers, err := docker.ContainerList(ctx, types.ContainerListOptions{
 		Filters: filters.NewArgs(
 			filters.Arg("label", clusterLabel(clusterName)),
-			filters.Arg("label", primaryNodeLabel),
+			filters.Arg("label", primaryNodeLabel()),
 		),
 		All: true,
 	})
