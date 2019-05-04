@@ -41,7 +41,7 @@ func TestCreateNodesFailsWhenPortBindingsIsInvalid(t *testing.T) {
 	}
 	mock := containerStarterMock{}
 
-	err := CreateNodes(ctx, mock, cfg)
+	_, err := CreateNodes(ctx, mock, cfg)
 
 	assert.Error(t, err)
 }
@@ -78,9 +78,13 @@ func TestCreateNodes(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, CreateNodes(ctx, mock, cfg))
+	cIDs, err := CreateNodes(ctx, mock, cfg)
+	require.NoError(t, err)
+
 	close(containerCreated)
 	close(containerRun)
+
+	t.Log(cIDs)
 
 	var (
 		createdContainers []*fakeContainer
@@ -237,4 +241,20 @@ func TestCreateNodes(t *testing.T) {
 		},
 		ranContainers,
 	)
+
+	sort.Strings(cIDs.Managers)
+	sort.Strings(cIDs.Workers)
+	// assert about retunred Ids
+	assert.Equal(t, cIDs, &NodeIDs{
+		Primary: "sind-TestCluster-manager-0",
+		Managers: []string{
+			"sind-TestCluster-manager-1",
+			"sind-TestCluster-manager-2",
+		},
+		Workers: []string{
+			"sind-TestCluster-worker-0",
+			"sind-TestCluster-worker-1",
+			"sind-TestCluster-worker-2",
+		},
+	})
 }

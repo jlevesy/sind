@@ -24,13 +24,20 @@ type NodesConfig struct {
 	Workers  uint16
 }
 
+// NodeIDs carries the IDs of various nodes in the cluster.
+type NodeIDs struct {
+	Primary  string
+	Managers []string
+	Workers  []string
+}
+
 type containerStarter interface {
 	ContainerCreate(context.Context, *container.Config, *container.HostConfig, *network.NetworkingConfig, string) (container.ContainerCreateCreatedBody, error)
 	ContainerStart(context.Context, string, types.ContainerStartOptions) error
 }
 
 // CreateNodes creates the nodes containers of the cluster.
-func CreateNodes(ctx context.Context, docker containerStarter, cfg NodesConfig) error {
+func CreateNodes(ctx context.Context, docker containerStarter, cfg NodesConfig) (*NodeIDs, error) {
 	var (
 		managerIndex uint16
 		workerIndex  uint16
@@ -38,9 +45,13 @@ func CreateNodes(ctx context.Context, docker containerStarter, cfg NodesConfig) 
 		nodeIPIdentifier uint16 = 1
 	)
 
+	primaryCreated := make(chan string, 1)
+	managerCreated := make(chan string, cfg.Managers-1)
+	workerCreated := make(chan string, cfg.Workers)
+
 	exposedPorts, portBindings, err := nat.ParsePortSpecs(cfg.PortBindings)
 	if err != nil {
-		return fmt.Errorf("unable to define port bindings: %v", err)
+		return nil, fmt.Errorf("unable to define port bindings: %v", err)
 	}
 
 	errg, groupCtx := errgroup.WithContext(ctx)
@@ -50,7 +61,7 @@ func CreateNodes(ctx context.Context, docker containerStarter, cfg NodesConfig) 
 	primaryIPSuffix := nodeIPIdentifier
 	errg.Go(func() error {
 		nodeName := fmt.Sprintf("sind-%s-manager-%d", cfg.ClusterName, primaryIndex)
-		return runContainer(
+		cID, err := runContainer(
 			groupCtx,
 			docker,
 			&container.Config{
@@ -76,6 +87,12 @@ func CreateNodes(ctx context.Context, docker containerStarter, cfg NodesConfig) 
 				},
 			},
 		)
+
+		if err != nil {
+			return err
+		}
+		primaryCreated <- cID
+		return nil
 	})
 
 	nodeIPIdentifier++
@@ -87,7 +104,7 @@ func CreateNodes(ctx context.Context, docker containerStarter, cfg NodesConfig) 
 		ipSuffix := nodeIPIdentifier
 		errg.Go(func() error {
 			nodeName := fmt.Sprintf("sind-%s-manager-%d", cfg.ClusterName, idx)
-			return runContainer(
+			cID, err := runContainer(
 				groupCtx,
 				docker,
 				&container.Config{
@@ -108,6 +125,14 @@ func CreateNodes(ctx context.Context, docker containerStarter, cfg NodesConfig) 
 					},
 				},
 			)
+
+			if err != nil {
+				return err
+			}
+
+			managerCreated <- cID
+
+			return nil
 		})
 		nodeIPIdentifier++
 	}
@@ -118,7 +143,7 @@ func CreateNodes(ctx context.Context, docker containerStarter, cfg NodesConfig) 
 		ipSuffix := nodeIPIdentifier
 		errg.Go(func() error {
 			nodeName := fmt.Sprintf("sind-%s-worker-%d", cfg.ClusterName, idx)
-			return runContainer(
+			cID, err := runContainer(
 				ctx,
 				docker,
 				&container.Config{
@@ -139,18 +164,41 @@ func CreateNodes(ctx context.Context, docker containerStarter, cfg NodesConfig) 
 					},
 				},
 			)
+
+			if err != nil {
+				return err
+			}
+
+			workerCreated <- cID
+			return nil
 		})
 		nodeIPIdentifier++
 	}
 
 	if err = errg.Wait(); err != nil {
-		return fmt.Errorf("unable to create the cluster: %v", err)
+		return nil, fmt.Errorf("unable to create the cluster: %v", err)
 	}
 
-	return nil
+	close(primaryCreated)
+	close(managerCreated)
+	close(workerCreated)
+
+	result := NodeIDs{
+		Primary: <-primaryCreated,
+	}
+
+	for cID := range managerCreated {
+		result.Managers = append(result.Managers, cID)
+	}
+
+	for cID := range workerCreated {
+		result.Workers = append(result.Workers, cID)
+	}
+
+	return &result, nil
 }
 
-func runContainer(ctx context.Context, client containerStarter, cConfig *container.Config, hConfig *container.HostConfig, nConfig *network.NetworkingConfig) error {
+func runContainer(ctx context.Context, client containerStarter, cConfig *container.Config, hConfig *container.HostConfig, nConfig *network.NetworkingConfig) (string, error) {
 	resp, err := client.ContainerCreate(
 		ctx,
 		cConfig,
@@ -159,12 +207,12 @@ func runContainer(ctx context.Context, client containerStarter, cConfig *contain
 		cConfig.Hostname,
 	)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if err = client.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return resp.ID, nil
 }
