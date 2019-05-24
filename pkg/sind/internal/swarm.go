@@ -1,9 +1,13 @@
 package internal
 
 import (
+	"context"
 	"fmt"
+	"net"
+	"net/url"
 
 	"github.com/docker/docker/api/types"
+	"github.com/golang/sync/errgroup"
 )
 
 const (
@@ -27,4 +31,104 @@ func SwarmPort(container types.Container) (uint16, error) {
 	}
 
 	return swarmPort.PublicPort, nil
+}
+
+type hoster interface {
+	DaemonHost() string
+}
+
+// SwarmHost returns the host of swarm cluster according to client.
+func SwarmHost(client hoster) (string, error) {
+	daemonURL, err := url.Parse(client.DaemonHost())
+	if err != nil {
+		return "", err
+	}
+
+	if daemonURL.Scheme == "unix" {
+		return "localhost", nil
+	}
+
+	return daemonURL.Host, nil
+}
+
+type executor interface {
+	ContainerExecCreate(context.Context, string, types.ExecConfig) (types.IDResponse, error)
+	ContainerExecStart(context.Context, string, types.ExecStartCheck) error
+}
+
+// ClusterParams are the params for the cluster.
+type ClusterParams struct {
+	IDs NodeIDs
+
+	PrimaryNodeIP    string
+	ManagerJoinToken string
+	WorkerJoinToken  string
+}
+
+// FormCluster will form the swarm cluster.
+func FormCluster(ctx context.Context, client executor, params ClusterParams) error {
+	errg, groupCtx := errgroup.WithContext(ctx)
+
+	managerAddr := net.JoinHostPort(params.PrimaryNodeIP, "2377")
+
+	for _, managerID := range params.IDs.Managers {
+		cid := managerID
+		errg.Go(func() error {
+			return execContainer(
+				groupCtx,
+				client,
+				cid,
+				[]string{
+					"docker",
+					"swarm",
+					"join",
+					"--token",
+					params.ManagerJoinToken,
+					managerAddr,
+				},
+			)
+		})
+	}
+
+	for _, workerID := range params.IDs.Workers {
+		cid := workerID
+		errg.Go(func() error {
+			return execContainer(
+				groupCtx,
+				client,
+				cid,
+				[]string{
+					"docker",
+					"swarm",
+					"join",
+					"--token",
+					params.WorkerJoinToken,
+					managerAddr,
+				},
+			)
+		})
+	}
+
+	if err := errg.Wait(); err != nil {
+		return fmt.Errorf("unable to form the cluster: %v", err)
+	}
+
+	return nil
+}
+
+func execContainer(ctx context.Context, client executor, cID string, cmd []string) error {
+	exec, err := client.ContainerExecCreate(
+		ctx,
+		cID,
+		types.ExecConfig{
+			Cmd:          cmd,
+			AttachStdout: true,
+			AttachStderr: true,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	return client.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{})
 }

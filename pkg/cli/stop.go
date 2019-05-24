@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jlevesy/sind/pkg/sind"
 	"github.com/jlevesy/sind/pkg/store"
 	"github.com/spf13/cobra"
 )
@@ -35,7 +36,17 @@ func runStop(cmd *cobra.Command, args []string) {
 		fail("unable to load cluster: %v\n", err)
 	}
 
-	if err = cluster.Stop(ctx); err != nil {
+	hostClient, err := cluster.HostClient()
+	if err != nil {
+		fail("unable to connect to the host: %v\n", err)
+	}
+
+	containers, err := sind.ListContainers(ctx, hostClient, cluster)
+	if err != nil {
+		fail("unable to list cluster containers: %v\n", err)
+	}
+
+	if err = sind.StopContainers(ctx, hostClient, containers); err != nil {
 		fail("unable to stop cluster: %v", err)
 	}
 
