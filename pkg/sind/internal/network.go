@@ -9,9 +9,10 @@ import (
 
 // NetworkConfig represents possible configuration for sind network.
 type NetworkConfig struct {
-	Name   string
-	Labels map[string]string
-	Subnet string
+	Name        string
+	ClusterName string
+	Labels      map[string]string
+	Subnet      string
 }
 
 func (c *NetworkConfig) ipam() *network.IPAM {
@@ -32,6 +33,12 @@ type networkCreator interface {
 
 // CreateNetwork creates network according to given network config.
 func CreateNetwork(ctx context.Context, client networkCreator, cfg NetworkConfig) (types.NetworkCreateResponse, error) {
+	if cfg.Labels == nil {
+		cfg.Labels = make(map[string]string)
+	}
+
+	cfg.Labels[clusterNameLabel] = cfg.ClusterName
+
 	return client.NetworkCreate(
 		ctx,
 		cfg.Name,

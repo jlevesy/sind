@@ -22,21 +22,38 @@ func TestCreateNetwork(t *testing.T) {
 		expectedOpts types.NetworkCreate
 	}{
 		{
-			desc: "without subnet",
+			desc: "with a nil valuated label map",
 			cfg: NetworkConfig{
-				Name:   "hello",
-				Labels: map[string]string{"foo": "bar"},
+				Name:        "hello",
+				ClusterName: "toto",
 			},
 			expectedOpts: types.NetworkCreate{
-				Labels: map[string]string{"foo": "bar"},
+				Labels: map[string]string{
+					clusterNameLabel: "toto",
+				},
+			},
+		},
+		{
+			desc: "without subnet",
+			cfg: NetworkConfig{
+				Name:        "hello",
+				Labels:      map[string]string{"foo": "bar"},
+				ClusterName: "toto",
+			},
+			expectedOpts: types.NetworkCreate{
+				Labels: map[string]string{
+					"foo":            "bar",
+					clusterNameLabel: "toto",
+				},
 			},
 		},
 		{
 			desc: "with subnet",
 			cfg: NetworkConfig{
-				Name:   "hello",
-				Labels: map[string]string{"foo": "bar"},
-				Subnet: "10.0.0.1/24",
+				Name:        "hello",
+				Labels:      map[string]string{"foo": "bar"},
+				Subnet:      "10.0.0.1/24",
+				ClusterName: "toto",
 			},
 			expectedOpts: types.NetworkCreate{
 				IPAM: &network.IPAM{
@@ -44,7 +61,10 @@ func TestCreateNetwork(t *testing.T) {
 						{Subnet: "10.0.0.1/24"},
 					},
 				},
-				Labels: map[string]string{"foo": "bar"},
+				Labels: map[string]string{
+					"foo":            "bar",
+					clusterNameLabel: "toto",
+				},
 			},
 		},
 	}

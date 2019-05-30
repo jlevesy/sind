@@ -16,6 +16,11 @@ const (
 	swarmGossipPort  = 2377
 )
 
+// SwarmDefaultListenAddress returns the defautl join address for the primary container.
+func SwarmDefaultListenAddress() string {
+	return net.JoinHostPort("0.0.0.0", strconv.Itoa(swarmGossipPort))
+}
+
 // SwarmPort returns the port to use to communicate with the swarm cluster on given primary container.
 func SwarmPort(container types.Container) (uint16, error) {
 	var swarmPort *types.Port

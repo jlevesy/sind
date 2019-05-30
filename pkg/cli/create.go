@@ -6,13 +6,12 @@ import (
 	"os"
 
 	"github.com/jlevesy/sind/pkg/sind"
-	"github.com/jlevesy/sind/pkg/store"
 	"github.com/spf13/cobra"
 )
 
 var (
-	managers      int
-	workers       int
+	managers      uint16
+	workers       uint16
 	networkName   string
 	networkSubnet string
 	portsMapping  []string
@@ -29,12 +28,12 @@ var (
 func init() {
 	rootCmd.AddCommand(createCmd)
 
-	createCmd.Flags().IntVarP(&managers, "managers", "m", 1, "Amount of managers in the created cluster.")
-	createCmd.Flags().IntVarP(&workers, "workers", "w", 0, "Amount of workers in the created cluster.")
-	createCmd.Flags().StringVarP(&networkName, "network_name", "n", "sind_default", "Name of the network to create.")
-	createCmd.Flags().StringVarP(&networkSubnet, "network_subnet", "s", "", "Subnet in CIDR format that represents a network segment.")
+	createCmd.Flags().Uint16VarP(&managers, "managers", "m", 1, "Amount of managers in the created cluster.")
+	createCmd.Flags().Uint16VarP(&workers, "workers", "w", 0, "Amount of workers in the created cluster.")
+	createCmd.Flags().StringVarP(&networkName, "network-name", "n", "sind-default", "Name of the network to create.")
+	createCmd.Flags().StringVarP(&networkSubnet, "network-subnet", "s", "", "Subnet in CIDR format that represents a network segment.")
 	createCmd.Flags().StringSliceVarP(&portsMapping, "ports", "p", []string{}, "Ingress network port binding.")
-	createCmd.Flags().StringVarP(&nodeImageName, "image", "i", "docker:18.09-dind", "Name of the image to use for the nodes.")
+	createCmd.Flags().StringVarP(&nodeImageName, "image", "i", sind.DefaultNodeImageName, "Name of the image to use for the nodes.")
 	createCmd.Flags().BoolVarP(&pull, "pull", "", false, "Pull node image before creating the cluster.")
 }
 
@@ -44,18 +43,9 @@ func runCreate(cmd *cobra.Command, args []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	st, err := store.New()
-	if err != nil {
-		fmt.Printf("unable to create store: %v\n", err)
-		os.Exit(1)
-	}
+	// TODO check if a cluster exists.
 
-	if err := st.Exists(clusterName); err != nil {
-		fmt.Printf("invalid cluster name: %v\n", err)
-		os.Exit(1)
-	}
-
-	clusterParams := sind.CreateClusterParams{
+	clusterConfig := sind.ClusterConfiguration{
 		Managers:      managers,
 		Workers:       workers,
 		NetworkName:   networkName,
@@ -66,14 +56,8 @@ func runCreate(cmd *cobra.Command, args []string) {
 		PullImage:     pull,
 	}
 
-	cluster, err := sind.CreateCluster(ctx, clusterParams)
-	if err != nil {
-		fmt.Printf("unable to setup a swarm cluster: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err = st.Save(*cluster); err != nil {
-		fmt.Printf("unable to save cluster: %v\n", err)
+	if err := sind.CreateCluster(ctx, clusterConfig); err != nil {
+		fmt.Printf("unable to create a swarm cluster: %v\n", err)
 		os.Exit(1)
 	}
 
