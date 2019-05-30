@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strconv"
 
 	"github.com/docker/docker/api/types"
 	"github.com/golang/sync/errgroup"
@@ -12,6 +13,7 @@ import (
 
 const (
 	dockerDaemonPort = 2375
+	swarmGossipPort  = 2377
 )
 
 // SwarmPort returns the port to use to communicate with the swarm cluster on given primary container.
@@ -69,7 +71,7 @@ type ClusterParams struct {
 func FormCluster(ctx context.Context, client executor, params ClusterParams) error {
 	errg, groupCtx := errgroup.WithContext(ctx)
 
-	managerAddr := net.JoinHostPort(params.PrimaryNodeIP, "2377")
+	managerAddr := net.JoinHostPort(params.PrimaryNodeIP, strconv.Itoa(swarmGossipPort))
 
 	for _, managerID := range params.IDs.Managers {
 		cid := managerID
