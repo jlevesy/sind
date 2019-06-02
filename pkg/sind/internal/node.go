@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/go-connections/nat"
 	"github.com/golang/sync/errgroup"
@@ -31,13 +32,13 @@ type NodeIDs struct {
 	Workers  []string
 }
 
-type containerStarter interface {
+type nodeCreator interface {
 	ContainerCreate(context.Context, *container.Config, *container.HostConfig, *network.NetworkingConfig, string) (container.ContainerCreateCreatedBody, error)
 	ContainerStart(context.Context, string, types.ContainerStartOptions) error
 }
 
 // CreateNodes creates the nodes containers of the cluster.
-func CreateNodes(ctx context.Context, docker containerStarter, cfg NodesConfig) (*NodeIDs, error) {
+func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*NodeIDs, error) {
 	var (
 		managerIndex uint16
 		workerIndex  uint16
@@ -198,7 +199,7 @@ func CreateNodes(ctx context.Context, docker containerStarter, cfg NodesConfig) 
 	return &result, nil
 }
 
-func runContainer(ctx context.Context, client containerStarter, cConfig *container.Config, hConfig *container.HostConfig, nConfig *network.NetworkingConfig) (string, error) {
+func runContainer(ctx context.Context, client nodeCreator, cConfig *container.Config, hConfig *container.HostConfig, nConfig *network.NetworkingConfig) (string, error) {
 	resp, err := client.ContainerCreate(
 		ctx,
 		cConfig,
@@ -215,4 +216,40 @@ func runContainer(ctx context.Context, client containerStarter, cConfig *contain
 	}
 
 	return resp.ID, nil
+}
+
+type nodeDeleter interface {
+	ContainerList(context.Context, types.ContainerListOptions) ([]types.Container, error)
+	ContainerRemove(context.Context, string, types.ContainerRemoveOptions) error
+}
+
+// DeleteNodes removes all node for a given cluster name.
+func DeleteNodes(ctx context.Context, client nodeDeleter, clusterName string) error {
+	containers, err := client.ContainerList(ctx, types.ContainerListOptions{
+		Filters: filters.NewArgs(filters.Arg("label", clusterLabel(clusterName))),
+	})
+	if err != nil {
+		return fmt.Errorf("unable to get node list: %v", err)
+	}
+
+	errg, groupCtx := errgroup.WithContext(ctx)
+	for _, container := range containers {
+		cid := container.ID
+		errg.Go(func() error {
+			return client.ContainerRemove(
+				groupCtx,
+				cid,
+				types.ContainerRemoveOptions{
+					Force:         true,
+					RemoveVolumes: true,
+				},
+			)
+		})
+	}
+
+	if err = errg.Wait(); err != nil {
+		return fmt.Errorf("unable to remove a node: %v", err)
+	}
+
+	return nil
 }

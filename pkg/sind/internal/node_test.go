@@ -14,15 +14,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type containerStarterMock struct {
+type nodeStarterMock struct {
 	containerCreate func(context.Context, *container.Config, *container.HostConfig, *network.NetworkingConfig, string) (container.ContainerCreateCreatedBody, error)
 	containerStart  func(context.Context, string, types.ContainerStartOptions) error
 }
 
-func (s containerStarterMock) ContainerCreate(ctx context.Context, ccfg *container.Config, hcfg *container.HostConfig, ncfg *network.NetworkingConfig, cName string) (container.ContainerCreateCreatedBody, error) {
+func (s nodeStarterMock) ContainerCreate(ctx context.Context, ccfg *container.Config, hcfg *container.HostConfig, ncfg *network.NetworkingConfig, cName string) (container.ContainerCreateCreatedBody, error) {
 	return s.containerCreate(ctx, ccfg, hcfg, ncfg, cName)
 }
-func (s containerStarterMock) ContainerStart(ctx context.Context, cID string, opts types.ContainerStartOptions) error {
+func (s nodeStarterMock) ContainerStart(ctx context.Context, cID string, opts types.ContainerStartOptions) error {
 	return s.containerStart(ctx, cID, opts)
 }
 
@@ -39,7 +39,7 @@ func TestCreateNodesFailsWhenPortBindingsIsInvalid(t *testing.T) {
 	cfg := NodesConfig{
 		PortBindings: []string{"notaport"},
 	}
-	mock := containerStarterMock{}
+	mock := nodeStarterMock{}
 
 	_, err := CreateNodes(ctx, mock, cfg)
 
@@ -61,7 +61,7 @@ func TestCreateNodes(t *testing.T) {
 	containerCreated := make(chan *fakeContainer, cfg.Managers+cfg.Workers)
 	containerRun := make(chan string, cfg.Managers+cfg.Workers)
 
-	mock := containerStarterMock{
+	mock := nodeStarterMock{
 		containerCreate: func(ctx context.Context, cConfig *container.Config, hConfig *container.HostConfig, nConfig *network.NetworkingConfig, cName string) (container.ContainerCreateCreatedBody, error) {
 			containerCreated <- &fakeContainer{
 				name:    cName,
@@ -244,7 +244,7 @@ func TestCreateNodes(t *testing.T) {
 
 	sort.Strings(cIDs.Managers)
 	sort.Strings(cIDs.Workers)
-	// assert about retunred Ids
+	// assert about returned IDs
 	assert.Equal(t, cIDs, &NodeIDs{
 		Primary: "sind-TestCluster-manager-0",
 		Managers: []string{
@@ -257,4 +257,68 @@ func TestCreateNodes(t *testing.T) {
 			"sind-TestCluster-worker-2",
 		},
 	})
+}
+
+type nodeDeleterMock struct {
+	containerList   func(context.Context, types.ContainerListOptions) ([]types.Container, error)
+	containerRemove func(context.Context, string, types.ContainerRemoveOptions) error
+}
+
+func (d nodeDeleterMock) ContainerList(ctx context.Context, opts types.ContainerListOptions) ([]types.Container, error) {
+	return d.containerList(ctx, opts)
+}
+func (d nodeDeleterMock) ContainerRemove(ctx context.Context, cID string, opts types.ContainerRemoveOptions) error {
+	return d.containerRemove(ctx, cID, opts)
+}
+
+func TestDeleteNodes(t *testing.T) {
+	ctx := context.Background()
+	var sentListOptions types.ContainerListOptions
+	clusterNodes := []types.Container{
+		{ID: "a"},
+		{ID: "b"},
+		{ID: "c"},
+		{ID: "d"},
+	}
+
+	clusterName := "name"
+
+	containerRemoved := make(chan string, len(clusterNodes))
+
+	mock := nodeDeleterMock{
+		containerList: func(ctx context.Context, opts types.ContainerListOptions) ([]types.Container, error) {
+			sentListOptions = opts
+			return clusterNodes, nil
+		},
+		containerRemove: func(ctx context.Context, cID string, opts types.ContainerRemoveOptions) error {
+			assert.True(t, opts.Force)
+			assert.True(t, opts.RemoveVolumes)
+			containerRemoved <- cID
+			return nil
+		},
+	}
+
+	require.NoError(t, DeleteNodes(ctx, mock, clusterName))
+
+	close(containerRemoved)
+
+	// Check that we used the correct label
+	assert.True(t, sentListOptions.Filters.ExactMatch(clusterNameLabel, clusterName))
+
+	// Check that all containers from the cluster are deleted
+	var expectedcIDs []string
+	for _, c := range clusterNodes {
+		expectedcIDs = append(expectedcIDs, c.ID)
+	}
+
+	var removedContainers []string
+
+	for cID := range containerRemoved {
+		removedContainers = append(removedContainers, cID)
+	}
+
+	sort.Strings(removedContainers)
+	sort.Strings(expectedcIDs)
+
+	assert.Equal(t, expectedcIDs, removedContainers)
 }

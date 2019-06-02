@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	docker "github.com/docker/docker/client"
 	"github.com/jlevesy/sind/pkg/sind"
 	"github.com/spf13/cobra"
 )
@@ -43,7 +44,17 @@ func runCreate(cmd *cobra.Command, args []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	// TODO check if a cluster exists.
+	client, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
+	if err != nil {
+		fmt.Printf("unable to create docker client: %v", err)
+		os.Exit(1)
+	}
+
+	// TODO check if a cluster exists and fail appropriately.
+	// clusterInfo, err := sind.InspectCluster(ctx, client, clusterName)
+	// if err != nil {
+	//	return err
+	// }
 
 	clusterConfig := sind.ClusterConfiguration{
 		Managers:      managers,
@@ -56,7 +67,7 @@ func runCreate(cmd *cobra.Command, args []string) {
 		PullImage:     pull,
 	}
 
-	if err := sind.CreateCluster(ctx, clusterConfig); err != nil {
+	if err := sind.CreateCluster(ctx, client, clusterConfig); err != nil {
 		fmt.Printf("unable to create a swarm cluster: %v\n", err)
 		os.Exit(1)
 	}

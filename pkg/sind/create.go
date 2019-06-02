@@ -55,14 +55,9 @@ func (n *ClusterConfiguration) imageName() string {
 }
 
 // CreateCluster creates a new swarm cluster.
-func CreateCluster(ctx context.Context, params ClusterConfiguration) error {
+func CreateCluster(ctx context.Context, hostClient *docker.Client, params ClusterConfiguration) error {
 	if err := params.validate(); err != nil {
 		return fmt.Errorf("invalid configuration: %v", err)
-	}
-
-	hostClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
-	if err != nil {
-		return fmt.Errorf("unable to create docker client: %v", err)
 	}
 
 	imageExists, err := internal.ImageExists(ctx, hostClient, params.imageName())
