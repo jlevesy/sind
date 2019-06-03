@@ -38,8 +38,17 @@ func TestSindCanCreateACluster(t *testing.T) {
 
 	require.True(t, info.Swarm.ControlAvailable)
 
-	assert.EqualValues(t, info.Swarm.Managers, params.Managers)
-	assert.EqualValues(t, info.Swarm.Nodes-info.Swarm.Managers, params.Workers)
+	assert.EqualValues(t, params.Managers, info.Swarm.Managers)
+	assert.EqualValues(t, params.Workers, info.Swarm.Nodes-info.Swarm.Managers)
+
+	clusterInfos, err := sind.InspectCluster(ctx, hostClient, params.ClusterName)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, params.Managers, clusterInfos.Managers)
+	assert.EqualValues(t, params.Managers, clusterInfos.ManagersRunning)
+
+	assert.EqualValues(t, params.Workers, clusterInfos.Workers)
+	assert.EqualValues(t, params.Workers, clusterInfos.WorkersRunning)
 }
 
 func TestSindCanCreateMultipleClusters(t *testing.T) {

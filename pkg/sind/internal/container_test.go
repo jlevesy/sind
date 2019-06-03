@@ -11,12 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type containerListerMock func(context.Context, types.ContainerListOptions) ([]types.Container, error)
-
-func (c containerListerMock) ContainerList(ctx context.Context, opts types.ContainerListOptions) ([]types.Container, error) {
-	return c(ctx, opts)
-}
-
 func TestListContainers(t *testing.T) {
 	ctx := context.Background()
 	var sentOpts types.ContainerListOptions
@@ -27,7 +21,7 @@ func TestListContainers(t *testing.T) {
 		{ID: "biz"},
 	}
 
-	mock := containerListerMock(func(ctx context.Context, opts types.ContainerListOptions) ([]types.Container, error) {
+	mock := ContainerListerMock(func(ctx context.Context, opts types.ContainerListOptions) ([]types.Container, error) {
 		sentOpts = opts
 
 		return containers, nil
@@ -37,12 +31,12 @@ func TestListContainers(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, containers, result)
-	assert.True(t, sentOpts.Filters.MatchKVList("label", map[string]string{clusterNameLabel: clusterName}))
+	assert.True(t, sentOpts.Filters.MatchKVList("label", map[string]string{ClusterNameLabel: clusterName}))
 }
 
 func TestListContainersFailsOnListError(t *testing.T) {
 	ctx := context.Background()
-	mock := containerListerMock(func(ctx context.Context, opts types.ContainerListOptions) ([]types.Container, error) {
+	mock := ContainerListerMock(func(ctx context.Context, opts types.ContainerListOptions) ([]types.Container, error) {
 		return nil, errors.New("nope")
 	})
 
@@ -85,7 +79,7 @@ func TestPrimaryContainer(t *testing.T) {
 			ctx := context.Background()
 			var sentOpts types.ContainerListOptions
 			clusterName := "blah"
-			mock := containerListerMock(func(ctx context.Context, opts types.ContainerListOptions) ([]types.Container, error) {
+			mock := ContainerListerMock(func(ctx context.Context, opts types.ContainerListOptions) ([]types.Container, error) {
 				sentOpts = opts
 				return test.containers, test.listError
 			})
@@ -97,8 +91,8 @@ func TestPrimaryContainer(t *testing.T) {
 				sentOpts.Filters.MatchKVList(
 					"label",
 					map[string]string{
-						clusterNameLabel: clusterName,
-						clusterRoleLabel: "primary",
+						ClusterNameLabel: clusterName,
+						NodeRoleLabel:    "primary",
 					},
 				),
 			)

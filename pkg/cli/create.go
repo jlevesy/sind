@@ -50,11 +50,17 @@ func runCreate(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	// TODO check if a cluster exists and fail appropriately.
-	// clusterInfo, err := sind.InspectCluster(ctx, client, clusterName)
-	// if err != nil {
-	//	return err
-	// }
+	clusterInfo, err := sind.InspectCluster(ctx, client, clusterName)
+	if err != nil {
+		fmt.Printf("unable to inspect cluste: %v", err)
+	}
+
+	// If cluster info is not nil, then the cluster exist.
+	if clusterInfo != nil {
+		fmt.Printf("%+v\n", *clusterInfo)
+		fmt.Printf("Cluster %q already exists, run sind delete first to remove it.\n", clusterName)
+		os.Exit(1)
+	}
 
 	clusterConfig := sind.ClusterConfiguration{
 		Managers:      managers,

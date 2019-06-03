@@ -3,18 +3,26 @@ package internal
 import "fmt"
 
 const (
-	clusterNameLabel = "com.sind.cluster.name"
-	clusterRoleLabel = "com.sind.cluster.role"
+	// ClusterNameLabel is the label containing the cluster name applied to resources of a cluster.
+	ClusterNameLabel = "com.sind.cluster.name"
 
-	nodeRolePrimary = "primary"
-	nodeRoleManager = "manager"
-	nodeRoleWorker  = "worker"
+	// NodeRoleLabel is the label containing the cluster role applied to nodes (containers) of a cluster.
+	NodeRoleLabel = "com.sind.cluster.role"
 )
 
-func primaryNodeLabel() string {
-	return fmt.Sprintf("%s=%s", clusterRoleLabel, nodeRolePrimary)
+// Node roles.
+const (
+	NodeRolePrimary = "primary"
+	NodeRoleManager = "manager"
+	NodeRoleWorker  = "worker"
+)
+
+// PrimaryNodeLabel is the label applied to the primary node of a cluster.:
+func PrimaryNodeLabel() string {
+	return fmt.Sprintf("%s=%s", NodeRoleLabel, NodeRolePrimary)
 }
 
-func clusterLabel(name string) string {
-	return fmt.Sprintf("%s=%s", clusterNameLabel, name)
+// ClusterLabel returns the labels applied to each resource(network, container...) of a cluster.
+func ClusterLabel(name string) string {
+	return fmt.Sprintf("%s=%s", ClusterNameLabel, name)
 }

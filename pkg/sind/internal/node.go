@@ -70,8 +70,8 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 				Image:        cfg.ImageRef,
 				ExposedPorts: nat.PortSet(exposedPorts),
 				Labels: map[string]string{
-					clusterNameLabel: cfg.ClusterName,
-					clusterRoleLabel: nodeRolePrimary,
+					ClusterNameLabel: cfg.ClusterName,
+					NodeRoleLabel:    NodeRolePrimary,
 				},
 			},
 			&container.HostConfig{
@@ -112,8 +112,8 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 					Image:    cfg.ImageRef,
 					Hostname: nodeName,
 					Labels: map[string]string{
-						clusterNameLabel: cfg.ClusterName,
-						clusterRoleLabel: nodeRoleManager,
+						ClusterNameLabel: cfg.ClusterName,
+						NodeRoleLabel:    NodeRoleManager,
 					},
 				},
 				&container.HostConfig{Privileged: true},
@@ -151,8 +151,8 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 					Image:    cfg.ImageRef,
 					Hostname: nodeName,
 					Labels: map[string]string{
-						clusterNameLabel: cfg.ClusterName,
-						clusterRoleLabel: nodeRoleWorker,
+						ClusterNameLabel: cfg.ClusterName,
+						NodeRoleLabel:    NodeRoleWorker,
 					},
 				},
 				&container.HostConfig{Privileged: true},
@@ -226,7 +226,7 @@ type nodeDeleter interface {
 // DeleteNodes removes all node for a given cluster name.
 func DeleteNodes(ctx context.Context, client nodeDeleter, clusterName string) error {
 	containers, err := client.ContainerList(ctx, types.ContainerListOptions{
-		Filters: filters.NewArgs(filters.Arg("label", clusterLabel(clusterName))),
+		Filters: filters.NewArgs(filters.Arg("label", ClusterLabel(clusterName))),
 	})
 	if err != nil {
 		return fmt.Errorf("unable to get node list: %v", err)

@@ -30,7 +30,7 @@ func TestCreateNetwork(t *testing.T) {
 		},
 		expectedOpts: types.NetworkCreate{
 			Labels: map[string]string{
-				clusterNameLabel: "toto",
+				ClusterNameLabel: "toto",
 			},
 		},
 	},
@@ -44,7 +44,7 @@ func TestCreateNetwork(t *testing.T) {
 			expectedOpts: types.NetworkCreate{
 				Labels: map[string]string{
 					"foo":            "bar",
-					clusterNameLabel: "toto",
+					ClusterNameLabel: "toto",
 				},
 			},
 		},
@@ -64,7 +64,7 @@ func TestCreateNetwork(t *testing.T) {
 				},
 				Labels: map[string]string{
 					"foo":            "bar",
-					clusterNameLabel: "toto",
+					ClusterNameLabel: "toto",
 				},
 			},
 		},
@@ -130,7 +130,7 @@ func TestDeleteNetwork(t *testing.T) {
 	require.NoError(t, DeleteNetwork(ctx, client, clusterName))
 
 	// assert correctness of the filters passed to list network.
-	assert.True(t, listOpts.Filters.ExactMatch(clusterNameLabel, clusterName))
+	assert.True(t, listOpts.Filters.ExactMatch(ClusterNameLabel, clusterName))
 
 	// assert that all the networks returned are removed.
 	close(networkRemoved)

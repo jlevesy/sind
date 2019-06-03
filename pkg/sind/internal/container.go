@@ -10,14 +10,15 @@ import (
 	"github.com/golang/sync/errgroup"
 )
 
-type containerLister interface {
+// ContainerLister is something able to list containers.
+type ContainerLister interface {
 	ContainerList(context.Context, types.ContainerListOptions) ([]types.Container, error)
 }
 
 // ListContainers returns the lists of containers for given cluster.
-func ListContainers(ctx context.Context, docker containerLister, clusterName string) ([]types.Container, error) {
+func ListContainers(ctx context.Context, docker ContainerLister, clusterName string) ([]types.Container, error) {
 	containers, err := docker.ContainerList(ctx, types.ContainerListOptions{
-		Filters: filters.NewArgs(filters.Arg("label", clusterLabel(clusterName))),
+		Filters: filters.NewArgs(filters.Arg("label", ClusterLabel(clusterName))),
 		All:     true,
 	})
 	if err != nil {
@@ -28,11 +29,11 @@ func ListContainers(ctx context.Context, docker containerLister, clusterName str
 }
 
 // PrimaryContainer returns the primary container of given cluster.
-func PrimaryContainer(ctx context.Context, docker containerLister, clusterName string) (*types.Container, error) {
+func PrimaryContainer(ctx context.Context, docker ContainerLister, clusterName string) (*types.Container, error) {
 	containers, err := docker.ContainerList(ctx, types.ContainerListOptions{
 		Filters: filters.NewArgs(
-			filters.Arg("label", clusterLabel(clusterName)),
-			filters.Arg("label", primaryNodeLabel()),
+			filters.Arg("label", ClusterLabel(clusterName)),
+			filters.Arg("label", PrimaryNodeLabel()),
 		),
 		All: true,
 	})

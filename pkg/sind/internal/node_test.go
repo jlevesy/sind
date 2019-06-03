@@ -303,7 +303,7 @@ func TestDeleteNodes(t *testing.T) {
 	close(containerRemoved)
 
 	// Check that we used the correct label
-	assert.True(t, sentListOptions.Filters.ExactMatch(clusterNameLabel, clusterName))
+	assert.True(t, sentListOptions.Filters.ExactMatch(ClusterNameLabel, clusterName))
 
 	// Check that all containers from the cluster are deleted
 	var expectedcIDs []string

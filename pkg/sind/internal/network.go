@@ -40,7 +40,7 @@ func CreateNetwork(ctx context.Context, client networkCreator, cfg NetworkConfig
 		cfg.Labels = make(map[string]string)
 	}
 
-	cfg.Labels[clusterNameLabel] = cfg.ClusterName
+	cfg.Labels[ClusterNameLabel] = cfg.ClusterName
 
 	return client.NetworkCreate(
 		ctx,
@@ -62,7 +62,7 @@ func DeleteNetwork(ctx context.Context, client networkDeleter, clusterName strin
 	networks, err := client.NetworkList(
 		ctx,
 		types.NetworkListOptions{
-			Filters: filters.NewArgs(filters.Arg("label", clusterLabel(clusterName))),
+			Filters: filters.NewArgs(filters.Arg("label", ClusterLabel(clusterName))),
 		},
 	)
 	if err != nil {
