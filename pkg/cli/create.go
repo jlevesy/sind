@@ -2,12 +2,13 @@ package cli
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	docker "github.com/docker/docker/client"
 	"github.com/jlevesy/sind/pkg/sind"
 	"github.com/spf13/cobra"
+	"github.com/ullaakut/disgo"
+	"github.com/ullaakut/disgo/style"
 )
 
 var (
@@ -39,29 +40,30 @@ func init() {
 }
 
 func runCreate(cmd *cobra.Command, args []string) {
-	fmt.Printf("Creating a new cluster %q with %d managers and %d, workers...\n", clusterName, managers, workers)
-
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
+	disgo.StartStep("Connecting to the docker daemon")
 	client, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
 	if err != nil {
-		fmt.Printf("unable to create docker client: %v", err)
+		disgo.FailStepf("Unable to connect to the docker daemon: %v", err)
 		os.Exit(1)
 	}
 
+	disgo.StartStepf("Checking if a cluster named %q already exists", clusterName)
 	clusterInfo, err := sind.InspectCluster(ctx, client, clusterName)
 	if err != nil {
-		fmt.Printf("unable to inspect cluste: %v", err)
+		disgo.FailStepf("Unable to check if the cluster already exists: %v", err)
+		os.Exit(1)
 	}
 
 	// If cluster info is not nil, then the cluster exist.
 	if clusterInfo != nil {
-		fmt.Printf("%+v\n", *clusterInfo)
-		fmt.Printf("Cluster %q already exists, run sind delete first to remove it.\n", clusterName)
+		disgo.FailStepf("Cluster %q already exists, run sind delete first to remove it.\n", clusterName)
 		os.Exit(1)
 	}
 
+	disgo.StartStepf("Creating a new cluster %q with %d managers and %d, workers", clusterName, managers, workers)
 	clusterConfig := sind.ClusterConfiguration{
 		Managers:      managers,
 		Workers:       workers,
@@ -74,9 +76,10 @@ func runCreate(cmd *cobra.Command, args []string) {
 	}
 
 	if err := sind.CreateCluster(ctx, client, clusterConfig); err != nil {
-		fmt.Printf("unable to create a swarm cluster: %v\n", err)
+		disgo.FailStepf("Unable to create cluster %q: %v", clusterName, err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Cluster %s successfuly created !\n", clusterName)
+	disgo.EndStep()
+	disgo.Infof("%s Cluster %s successfuly created\n", style.Success(style.SymbolCheck), clusterName)
 }
