@@ -3,8 +3,10 @@ package cli
 import (
 	"context"
 	"os"
+	"syscall"
 
 	docker "github.com/docker/docker/client"
+	"github.com/jlevesy/sind/pkg/cli/internal"
 	"github.com/jlevesy/sind/pkg/sind"
 	"github.com/spf13/cobra"
 	"github.com/ullaakut/disgo"
@@ -43,23 +45,26 @@ func runCreate(cmd *cobra.Command, args []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
+	ctx, cancel = internal.WithSignal(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
 	disgo.StartStep("Connecting to the docker daemon")
 	client, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
 	if err != nil {
-		disgo.FailStepf("Unable to connect to the docker daemon: %v", err)
+		_ = disgo.FailStepf("Unable to connect to the docker daemon: %v", err)
 		os.Exit(1)
 	}
 
 	disgo.StartStepf("Checking if a cluster named %q already exists", clusterName)
 	clusterInfo, err := sind.InspectCluster(ctx, client, clusterName)
 	if err != nil {
-		disgo.FailStepf("Unable to check if the cluster already exists: %v", err)
+		_ = disgo.FailStepf("Unable to check if the cluster already exists: %v", err)
 		os.Exit(1)
 	}
 
 	// If cluster info is not nil, then the cluster exist.
 	if clusterInfo != nil {
-		disgo.FailStepf("Cluster %q already exists, run sind delete first to remove it.\n", clusterName)
+		_ = disgo.FailStepf("Cluster %q already exists, run sind delete first to remove it.\n", clusterName)
 		os.Exit(1)
 	}
 
@@ -76,7 +81,7 @@ func runCreate(cmd *cobra.Command, args []string) {
 	}
 
 	if err := sind.CreateCluster(ctx, client, clusterConfig); err != nil {
-		disgo.FailStepf("Unable to create cluster %q: %v", clusterName, err)
+		_ = disgo.FailStepf("Unable to create cluster %q: %v", clusterName, err)
 		os.Exit(1)
 	}
 

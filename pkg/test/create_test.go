@@ -30,7 +30,10 @@ func TestSindCanCreateACluster(t *testing.T) {
 		require.NoError(t, sind.DeleteCluster(ctx, hostClient, params.ClusterName))
 	}()
 
-	swarmClient, err := docker.NewClientWithOpts(sind.ClusterClient(ctx, hostClient, params.ClusterName), docker.WithVersion("1.39"))
+	swarmHost, err := sind.ClusterHost(ctx, hostClient, params.ClusterName)
+	require.NoError(t, err)
+
+	swarmClient, err := docker.NewClientWithOpts(docker.WithHost(swarmHost), docker.WithVersion("1.39"))
 	require.NoError(t, err)
 
 	info, err := swarmClient.Info(ctx)

@@ -3,8 +3,10 @@ package cli
 import (
 	"context"
 	"os"
+	"syscall"
 
 	docker "github.com/docker/docker/client"
+	"github.com/jlevesy/sind/pkg/cli/internal"
 	"github.com/jlevesy/sind/pkg/sind"
 	"github.com/spf13/cobra"
 	"github.com/ullaakut/disgo"
@@ -27,29 +29,32 @@ func runDelete(cmd *cobra.Command, args []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
+	ctx, cancel = internal.WithSignal(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
 	disgo.StartStep("Connecting to the docker daemon")
 
 	client, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
 	if err != nil {
-		disgo.FailStepf("Unable to connect to the docker daemon: %v", err)
+		_ = disgo.FailStepf("Unable to connect to the docker daemon: %v", err)
 		os.Exit(1)
 	}
 
 	disgo.StartStepf("Checking if a cluster named %q exists", clusterName)
 	clusterInfo, err := sind.InspectCluster(ctx, client, clusterName)
 	if err != nil {
-		disgo.FailStepf("Unable to check if the cluster exists: %v", err)
+		_ = disgo.FailStepf("Unable to check if the cluster exists: %v", err)
 		os.Exit(1)
 	}
 
 	if clusterInfo == nil {
-		disgo.FailStepf("Cluster %q does not exist, or is already deleted\n", clusterName)
+		_ = disgo.FailStepf("Cluster %q does not exist, or is already deleted\n", clusterName)
 		os.Exit(1)
 	}
 
 	disgo.StartStepf("Deleting cluster %q", clusterName)
 	if err = sind.DeleteCluster(ctx, client, clusterName); err != nil {
-		disgo.FailStepf("Unable to delete the cluster %q: %v", clusterName, err)
+		_ = disgo.FailStepf("Unable to delete the cluster %q: %v", clusterName, err)
 		os.Exit(1)
 	}
 
