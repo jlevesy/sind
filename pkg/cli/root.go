@@ -25,7 +25,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&clusterName, "cluster", "c", "sind_default", "Cluster name.")
+	rootCmd.PersistentFlags().StringVarP(&clusterName, "cluster", "c", "default", "Cluster name.")
 	rootCmd.PersistentFlags().DurationVarP(&timeout, "timeout", "t", 30*time.Second, "Command timeout.")
 	rootCmd.PersistentFlags().BoolVarP(&nonInteractive, "non-interactive", "y", false, "Non interactive mode.")
 }

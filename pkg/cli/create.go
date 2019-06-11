@@ -86,5 +86,5 @@ func runCreate(cmd *cobra.Command, args []string) {
 	}
 
 	disgo.EndStep()
-	disgo.Infof("%s Cluster %s successfuly created\n", style.Success(style.SymbolCheck), clusterName)
+	disgo.Infof("%s Cluster %q successfuly created\n", style.Success(style.SymbolCheck), clusterName)
 }

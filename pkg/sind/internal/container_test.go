@@ -249,3 +249,70 @@ func TestRemoveContainers(t *testing.T) {
 		})
 	}
 }
+
+type containerStarterMock func(context.Context, string, types.ContainerStartOptions) error
+
+func (c containerStarterMock) ContainerStart(ctx context.Context, cID string, opts types.ContainerStartOptions) error {
+	return c(ctx, cID, opts)
+}
+
+func TestStartContainers(t *testing.T) {
+	testCases := []struct {
+		desc          string
+		containers    []types.Container
+		startError    error
+		expectedError error
+	}{
+		{
+			desc: "failed to start container",
+			containers: []types.Container{
+				{ID: "aaaaa"},
+				{ID: "bbbbb"},
+				{ID: "ccccc"},
+			},
+			startError:    errors.New("still nope nope nope"),
+			expectedError: errors.New("failed to start at least one container: still nope nope nope"),
+		},
+		{
+			desc:       "empty containers list",
+			containers: []types.Container{},
+		},
+		{
+			desc: "starts successfully",
+			containers: []types.Container{
+				{ID: "aaaaa"},
+				{ID: "bbbbb"},
+				{ID: "ccccc"},
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.desc, func(t *testing.T) {
+			ctx := context.Background()
+			containerStarted := make(chan string, len(test.containers))
+			mock := containerStarterMock(func(ctx context.Context, cID string, opts types.ContainerStartOptions) error {
+				containerStarted <- cID
+				return test.startError
+			})
+
+			err := StartContainers(ctx, mock, test.containers)
+
+			if test.expectedError != nil {
+				assert.Equal(t, test.expectedError, err)
+			}
+
+			close(containerStarted)
+
+			var startedCIDs []string
+			for cID := range containerStarted {
+				startedCIDs = append(startedCIDs, cID)
+			}
+
+			assert.Len(t, startedCIDs, len(test.containers))
+			for _, container := range test.containers {
+				assert.Contains(t, startedCIDs, container.ID)
+			}
+		})
+	}
+}

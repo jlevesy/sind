@@ -52,6 +52,55 @@ func PrimaryContainer(ctx context.Context, docker ContainerLister, clusterName s
 	return &containers[0], nil
 }
 
+type containerRemover interface {
+	ContainerRemove(ctx context.Context, containerID string, opts types.ContainerRemoveOptions) error
+}
+
+// RemoveContainers removes all given containers concurrently.
+func RemoveContainers(ctx context.Context, hostClient containerRemover, containers []types.Container) error {
+	errg, groupCtx := errgroup.WithContext(ctx)
+	for _, container := range containers {
+		cid := container.ID
+		errg.Go(func() error {
+			return hostClient.ContainerRemove(groupCtx,
+				cid,
+				types.ContainerRemoveOptions{
+					Force:         true,
+					RemoveVolumes: true,
+				},
+			)
+		})
+	}
+
+	if err := errg.Wait(); err != nil {
+		return fmt.Errorf("failed to remove at least one container: %v", err)
+	}
+
+	return nil
+}
+
+type containerStarter interface {
+	ContainerStart(ctx context.Context, containerID string, opts types.ContainerStartOptions) error
+}
+
+// StartContainers starts all given containers concurrently.
+func StartContainers(ctx context.Context, hostClient containerStarter, containers []types.Container) error {
+	errg, groupCtx := errgroup.WithContext(ctx)
+
+	for _, container := range containers {
+		cID := container.ID
+		errg.Go(func() error {
+			return hostClient.ContainerStart(groupCtx, cID, types.ContainerStartOptions{})
+		})
+	}
+
+	if err := errg.Wait(); err != nil {
+		return fmt.Errorf("failed to start at least one container: %v", err)
+	}
+
+	return nil
+}
+
 type containerStopper interface {
 	ContainerStop(ctx context.Context, containerID string, timeout *time.Duration) error
 }
@@ -69,34 +118,6 @@ func StopContainers(ctx context.Context, hostClient containerStopper, containers
 
 	if err := errg.Wait(); err != nil {
 		return fmt.Errorf("failed to stop at least one container: %v", err)
-	}
-
-	return nil
-}
-
-type containerRemover interface {
-	ContainerRemove(ctx context.Context, containerID string, opts types.ContainerRemoveOptions) error
-}
-
-// RemoveContainers removes all given containers concurrently.
-func RemoveContainers(ctx context.Context, hostClient containerRemover, containers []types.Container) error {
-	errg, groupCtx := errgroup.WithContext(ctx)
-	for _, container := range containers {
-		cid := container.ID
-		errg.Go(func() error {
-			return hostClient.ContainerRemove(
-				groupCtx,
-				cid,
-				types.ContainerRemoveOptions{
-					Force:         true,
-					RemoveVolumes: true,
-				},
-			)
-		})
-	}
-
-	if err := errg.Wait(); err != nil {
-		return fmt.Errorf("failed to remove at least one container: %v", err)
 	}
 
 	return nil
