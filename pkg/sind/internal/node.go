@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
+	"net"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -19,6 +20,7 @@ type NodesConfig struct {
 	NetworkID    string
 	NetworkName  string
 	PortBindings []string
+	Subnet       net.IPNet
 
 	Managers uint16
 	Workers  uint16
@@ -84,7 +86,13 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 					cfg.NetworkName: {
 						NetworkID: cfg.NetworkID,
 						IPAMConfig: &network.EndpointIPAMConfig{
-							IPv4Address: fmt.Sprintf("10.0.117.%d", primaryIPSuffix),
+							IPv4Address: fmt.Sprintf(
+								"%d.%d.%d.%d",
+								cfg.Subnet.IP[0],
+								cfg.Subnet.IP[1],
+								cfg.Subnet.IP[2],
+								primaryIPSuffix,
+							),
 						},
 					},
 				},
@@ -124,7 +132,13 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 						cfg.NetworkName: {
 							NetworkID: cfg.NetworkID,
 							IPAMConfig: &network.EndpointIPAMConfig{
-								IPv4Address: fmt.Sprintf("10.0.117.%d", ipSuffix),
+								IPv4Address: fmt.Sprintf(
+									"%d.%d.%d.%d",
+									cfg.Subnet.IP[0],
+									cfg.Subnet.IP[1],
+									cfg.Subnet.IP[2],
+									ipSuffix,
+								),
 							},
 						},
 					},
@@ -165,7 +179,13 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 						cfg.NetworkName: {
 							NetworkID: cfg.NetworkID,
 							IPAMConfig: &network.EndpointIPAMConfig{
-								IPv4Address: fmt.Sprintf("10.0.117.%d", ipSuffix),
+								IPv4Address: fmt.Sprintf(
+									"%d.%d.%d.%d",
+									cfg.Subnet.IP[0],
+									cfg.Subnet.IP[1],
+									cfg.Subnet.IP[2],
+									ipSuffix,
+								),
 							},
 						},
 					},

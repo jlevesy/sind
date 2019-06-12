@@ -16,7 +16,6 @@ var (
 	managers      uint16
 	workers       uint16
 	networkName   string
-	networkSubnet string
 	portsMapping  []string
 	nodeImageName string
 	pull          bool

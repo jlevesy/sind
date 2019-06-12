@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
+	"net"
 	"sort"
 	"testing"
 
@@ -53,6 +54,7 @@ func TestCreateNodes(t *testing.T) {
 		ImageRef:     "foo",
 		NetworkID:    "ababababab",
 		NetworkName:  "bar",
+		Subnet:       net.IPNet{IP: net.IP([]byte{10, 0, 117, 0})},
 		PortBindings: []string{"8080:8080"},
 		Managers:     3,
 		Workers:      3,

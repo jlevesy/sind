@@ -70,9 +70,15 @@ func CreateCluster(ctx context.Context, hostClient *docker.Client, params Cluste
 		}
 	}
 
+	subnet, err := internal.PickSubnet()
+	if err != nil {
+		return fmt.Errorf("unable to pick an internal subnet: %v", err)
+	}
+
 	networkCfg := internal.NetworkConfig{
 		Name:        params.NetworkName,
 		ClusterName: params.ClusterName,
+		Subnet:      subnet.String(),
 	}
 
 	clusterNet, err := internal.CreateNetwork(ctx, hostClient, networkCfg)
@@ -86,6 +92,7 @@ func CreateCluster(ctx context.Context, hostClient *docker.Client, params Cluste
 
 		NetworkID:    clusterNet.ID,
 		NetworkName:  params.NetworkName,
+		Subnet:       *subnet,
 		PortBindings: params.PortBindings,
 
 		Managers: params.Managers,

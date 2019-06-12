@@ -3,7 +3,9 @@ package test
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/docker/docker/api/types"
 	docker "github.com/docker/docker/client"
 	"github.com/jlevesy/sind/pkg/sind"
 	"github.com/stretchr/testify/assert"
@@ -53,8 +55,9 @@ func TestSindCanStopAndStartACluster(t *testing.T) {
 	swarmClient, err := docker.NewClientWithOpts(docker.WithHost(swarmHost), docker.WithVersion("1.39"))
 	require.NoError(t, err)
 
-	info, err := swarmClient.Info(ctx)
-	require.NoError(t, err)
+	var info types.Info
+
+	require.NoError(t, retry(10, time.Second, func() error { info, err = swarmClient.Info(ctx); return err }))
 
 	require.True(t, info.Swarm.ControlAvailable)
 

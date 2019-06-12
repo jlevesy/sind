@@ -27,6 +27,7 @@ func TestCreateNetwork(t *testing.T) {
 		cfg: NetworkConfig{
 			Name:        "hello",
 			ClusterName: "toto",
+			Subnet:      "10.0.117.0/24",
 		},
 		expectedOpts: types.NetworkCreate{
 			IPAM: &network.IPAM{
@@ -45,6 +46,7 @@ func TestCreateNetwork(t *testing.T) {
 				Name:        "hello",
 				Labels:      map[string]string{"foo": "bar"},
 				ClusterName: "toto",
+				Subnet:      "10.0.117.0/24",
 			},
 			expectedOpts: types.NetworkCreate{
 				IPAM: &network.IPAM{

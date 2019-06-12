@@ -3,6 +3,9 @@ package internal
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"net"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -14,11 +17,20 @@ import (
 type NetworkConfig struct {
 	Name        string
 	ClusterName string
+	Subnet      string
 	Labels      map[string]string
 }
 
 type networkCreator interface {
 	NetworkCreate(context.Context, string, types.NetworkCreate) (types.NetworkCreateResponse, error)
+}
+
+// PickSubnet returns a subnet to use for the container network.
+// TODO at the moment we pick randomly a subnet, this can be improved.
+func PickSubnet() (*net.IPNet, error) {
+	rand.Seed(time.Now().UnixNano())
+	_, res, err := net.ParseCIDR(fmt.Sprintf("10.0.%d.0/24", rand.Intn(256)))
+	return res, err
 }
 
 // CreateNetwork creates network according to given network config.
@@ -35,7 +47,7 @@ func CreateNetwork(ctx context.Context, client networkCreator, cfg NetworkConfig
 		types.NetworkCreate{
 			IPAM: &network.IPAM{
 				Config: []network.IPAMConfig{
-					{Subnet: "10.0.117.0/24"},
+					{Subnet: cfg.Subnet},
 				},
 			},
 			Labels: cfg.Labels,
