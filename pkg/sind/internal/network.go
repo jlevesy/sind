@@ -15,19 +15,6 @@ type NetworkConfig struct {
 	Name        string
 	ClusterName string
 	Labels      map[string]string
-	Subnet      string
-}
-
-func (c *NetworkConfig) ipam() *network.IPAM {
-	if c.Subnet == "" {
-		return nil
-	}
-
-	return &network.IPAM{
-		Config: []network.IPAMConfig{
-			{Subnet: c.Subnet},
-		},
-	}
 }
 
 type networkCreator interface {
@@ -46,7 +33,11 @@ func CreateNetwork(ctx context.Context, client networkCreator, cfg NetworkConfig
 		ctx,
 		cfg.Name,
 		types.NetworkCreate{
-			IPAM:   cfg.ipam(),
+			IPAM: &network.IPAM{
+				Config: []network.IPAMConfig{
+					{Subnet: "10.0.117.0/24"},
+				},
+			},
 			Labels: cfg.Labels,
 		},
 	)

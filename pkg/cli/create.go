@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"os"
 	"syscall"
 
 	docker "github.com/docker/docker/client"
@@ -35,7 +34,6 @@ func init() {
 	createCmd.Flags().Uint16VarP(&managers, "managers", "m", 1, "Amount of managers in the created cluster.")
 	createCmd.Flags().Uint16VarP(&workers, "workers", "w", 0, "Amount of workers in the created cluster.")
 	createCmd.Flags().StringVarP(&networkName, "network-name", "n", "sind-default", "Name of the network to create.")
-	createCmd.Flags().StringVarP(&networkSubnet, "network-subnet", "s", "", "Subnet in CIDR format that represents a network segment.")
 	createCmd.Flags().StringSliceVarP(&portsMapping, "ports", "p", []string{}, "Ingress network port binding.")
 	createCmd.Flags().StringVarP(&nodeImageName, "image", "i", sind.DefaultNodeImageName, "Name of the image to use for the nodes.")
 	createCmd.Flags().BoolVarP(&pull, "pull", "", false, "Pull node image before creating the cluster.")
@@ -51,38 +49,33 @@ func runCreate(cmd *cobra.Command, args []string) {
 	disgo.StartStep("Connecting to the docker daemon")
 	client, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
 	if err != nil {
-		_ = disgo.FailStepf("Unable to connect to the docker daemon: %v", err)
-		os.Exit(1)
+		fail(disgo.FailStepf("Unable to connect to the docker daemon: %v", err))
 	}
 
 	disgo.StartStepf("Checking if a cluster named %q already exists", clusterName)
 	clusterInfo, err := sind.InspectCluster(ctx, client, clusterName)
 	if err != nil {
-		_ = disgo.FailStepf("Unable to check if the cluster already exists: %v", err)
-		os.Exit(1)
+		fail(disgo.FailStepf("Unable to check if the cluster already exists: %v", err))
 	}
 
 	// If cluster info is not nil, then the cluster exist.
 	if clusterInfo != nil {
-		_ = disgo.FailStepf("Cluster %q already exists, run sind delete first to remove it.\n", clusterName)
-		os.Exit(1)
+		fail(disgo.FailStepf("Cluster %q already exists, run sind delete first to remove it.", clusterName))
 	}
 
 	disgo.StartStepf("Creating a new cluster %q with %d managers and %d, workers", clusterName, managers, workers)
 	clusterConfig := sind.ClusterConfiguration{
-		Managers:      managers,
-		Workers:       workers,
-		NetworkName:   networkName,
-		NetworkSubnet: networkSubnet,
-		ClusterName:   clusterName,
-		PortBindings:  portsMapping,
-		ImageName:     nodeImageName,
-		PullImage:     pull,
+		Managers:     managers,
+		Workers:      workers,
+		NetworkName:  networkName,
+		ClusterName:  clusterName,
+		PortBindings: portsMapping,
+		ImageName:    nodeImageName,
+		PullImage:    pull,
 	}
 
 	if err := sind.CreateCluster(ctx, client, clusterConfig); err != nil {
-		_ = disgo.FailStepf("Unable to create cluster %q: %v", clusterName, err)
-		os.Exit(1)
+		fail(disgo.FailStepf("Unable to create cluster %q: %v", clusterName, err))
 	}
 
 	disgo.EndStep()

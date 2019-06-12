@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"os"
 	"syscall"
 
 	docker "github.com/docker/docker/client"
@@ -36,26 +35,22 @@ func runDelete(cmd *cobra.Command, args []string) {
 
 	client, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
 	if err != nil {
-		_ = disgo.FailStepf("Unable to connect to the docker daemon: %v", err)
-		os.Exit(1)
+		fail(disgo.FailStepf("Unable to connect to the docker daemon: %v", err))
 	}
 
 	disgo.StartStepf("Checking if a cluster named %q exists", clusterName)
 	clusterInfo, err := sind.InspectCluster(ctx, client, clusterName)
 	if err != nil {
-		_ = disgo.FailStepf("Unable to check if the cluster exists: %v", err)
-		os.Exit(1)
+		fail(disgo.FailStepf("Unable to check if the cluster exists: %v", err))
 	}
 
 	if clusterInfo == nil {
-		_ = disgo.FailStepf("Cluster %q does not exist, or is already deleted\n", clusterName)
-		os.Exit(1)
+		fail(disgo.FailStepf("Cluster %q does not exist, or is already deleted", clusterName))
 	}
 
 	disgo.StartStepf("Deleting cluster %q", clusterName)
 	if err = sind.DeleteCluster(ctx, client, clusterName); err != nil {
-		_ = disgo.FailStepf("Unable to delete the cluster %q: %v", clusterName, err)
-		os.Exit(1)
+		fail(disgo.FailStepf("Unable to delete the cluster %q: %v", clusterName, err))
 	}
 
 	disgo.EndStep()

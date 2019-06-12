@@ -146,7 +146,9 @@ func TestCreateNodes(t *testing.T) {
 			EndpointsConfig: map[string]*network.EndpointSettings{
 				cfg.NetworkName: {
 					NetworkID: cfg.NetworkID,
-					IPAddress: "10.0.117.1",
+					IPAMConfig: &network.EndpointIPAMConfig{
+						IPv4Address: "10.0.117.2",
+					},
 				},
 			},
 		},
@@ -182,7 +184,9 @@ func TestCreateNodes(t *testing.T) {
 				EndpointsConfig: map[string]*network.EndpointSettings{
 					cfg.NetworkName: {
 						NetworkID: cfg.NetworkID,
-						IPAddress: fmt.Sprintf("10.0.117.%d", i+2),
+						IPAMConfig: &network.EndpointIPAMConfig{
+							IPv4Address: fmt.Sprintf("10.0.117.%d", i+3),
+						},
 					},
 				},
 			},
@@ -219,7 +223,9 @@ func TestCreateNodes(t *testing.T) {
 				EndpointsConfig: map[string]*network.EndpointSettings{
 					cfg.NetworkName: {
 						NetworkID: cfg.NetworkID,
-						IPAddress: fmt.Sprintf("10.0.117.%d", i+2+len(managers)),
+						IPAMConfig: &network.EndpointIPAMConfig{
+							IPv4Address: fmt.Sprintf("10.0.117.%d", i+3+len(managers)),
+						},
 					},
 				},
 			},

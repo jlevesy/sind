@@ -18,9 +18,8 @@ const (
 
 // ClusterConfiguration are args to pass to CreateCluster.
 type ClusterConfiguration struct {
-	ClusterName   string
-	NetworkName   string
-	NetworkSubnet string
+	ClusterName string
+	NetworkName string
 
 	Managers uint16
 	Workers  uint16
@@ -74,7 +73,6 @@ func CreateCluster(ctx context.Context, hostClient *docker.Client, params Cluste
 	networkCfg := internal.NetworkConfig{
 		Name:        params.NetworkName,
 		ClusterName: params.ClusterName,
-		Subnet:      params.NetworkSubnet,
 	}
 
 	clusterNet, err := internal.CreateNetwork(ctx, hostClient, networkCfg)

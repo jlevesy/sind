@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/ullaakut/disgo"
+	"github.com/ullaakut/disgo/style"
 )
 
 var (
@@ -37,4 +38,9 @@ func Execute() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+}
+
+func fail(err error) {
+	disgo.Errorln(style.Failure(err))
+	os.Exit(1)
 }

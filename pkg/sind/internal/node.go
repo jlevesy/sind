@@ -6,7 +6,6 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/go-connections/nat"
 	"github.com/golang/sync/errgroup"
@@ -43,7 +42,8 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 		managerIndex uint16
 		workerIndex  uint16
 
-		nodeIPIdentifier uint16 = 1
+		// Start at 2, 1 is the network gateway.
+		nodeIPIdentifier uint16 = 2
 	)
 
 	primaryCreated := make(chan string, 1)
@@ -83,7 +83,9 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 				EndpointsConfig: map[string]*network.EndpointSettings{
 					cfg.NetworkName: {
 						NetworkID: cfg.NetworkID,
-						IPAddress: fmt.Sprintf("10.0.117.%d", primaryIPSuffix),
+						IPAMConfig: &network.EndpointIPAMConfig{
+							IPv4Address: fmt.Sprintf("10.0.117.%d", primaryIPSuffix),
+						},
 					},
 				},
 			},
@@ -121,7 +123,9 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 					EndpointsConfig: map[string]*network.EndpointSettings{
 						cfg.NetworkName: {
 							NetworkID: cfg.NetworkID,
-							IPAddress: fmt.Sprintf("10.0.117.%d", ipSuffix),
+							IPAMConfig: &network.EndpointIPAMConfig{
+								IPv4Address: fmt.Sprintf("10.0.117.%d", ipSuffix),
+							},
 						},
 					},
 				},
@@ -160,7 +164,9 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 					EndpointsConfig: map[string]*network.EndpointSettings{
 						cfg.NetworkName: {
 							NetworkID: cfg.NetworkID,
-							IPAddress: fmt.Sprintf("10.0.117.%d", ipSuffix),
+							IPAMConfig: &network.EndpointIPAMConfig{
+								IPv4Address: fmt.Sprintf("10.0.117.%d", ipSuffix),
+							},
 						},
 					},
 				},
@@ -225,9 +231,7 @@ type nodeDeleter interface {
 
 // DeleteNodes removes all node for a given cluster name.
 func DeleteNodes(ctx context.Context, client nodeDeleter, clusterName string) error {
-	containers, err := client.ContainerList(ctx, types.ContainerListOptions{
-		Filters: filters.NewArgs(filters.Arg("label", ClusterLabel(clusterName))),
-	})
+	containers, err := ListContainers(ctx, client, clusterName)
 	if err != nil {
 		return fmt.Errorf("unable to get node list: %v", err)
 	}

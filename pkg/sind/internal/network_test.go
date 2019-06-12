@@ -29,6 +29,11 @@ func TestCreateNetwork(t *testing.T) {
 			ClusterName: "toto",
 		},
 		expectedOpts: types.NetworkCreate{
+			IPAM: &network.IPAM{
+				Config: []network.IPAMConfig{
+					{Subnet: "10.0.117.0/24"},
+				},
+			},
 			Labels: map[string]string{
 				ClusterNameLabel: "toto",
 			},
@@ -42,24 +47,9 @@ func TestCreateNetwork(t *testing.T) {
 				ClusterName: "toto",
 			},
 			expectedOpts: types.NetworkCreate{
-				Labels: map[string]string{
-					"foo":            "bar",
-					ClusterNameLabel: "toto",
-				},
-			},
-		},
-		{
-			desc: "with subnet",
-			cfg: NetworkConfig{
-				Name:        "hello",
-				Labels:      map[string]string{"foo": "bar"},
-				Subnet:      "10.0.0.1/24",
-				ClusterName: "toto",
-			},
-			expectedOpts: types.NetworkCreate{
 				IPAM: &network.IPAM{
 					Config: []network.IPAMConfig{
-						{Subnet: "10.0.0.1/24"},
+						{Subnet: "10.0.117.0/24"},
 					},
 				},
 				Labels: map[string]string{
