@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/jlevesy/sind/pkg/sind/internal"
 )
 
@@ -24,12 +23,9 @@ type ClusterStatus struct {
 // InspectCluster returns current status for a given cluster.
 // It returns nil,nil if the cluster is not found on the configured docker host.
 func InspectCluster(ctx context.Context, hostClient internal.ContainerLister, clusterName string) (*ClusterStatus, error) {
-	nodes, err := hostClient.ContainerList(ctx, types.ContainerListOptions{
-		All:     true,
-		Filters: filters.NewArgs(filters.Arg("label", internal.ClusterLabel(clusterName))),
-	})
+	nodes, err := internal.ListContainers(ctx, hostClient, clusterName)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get node list: %v", err)
+		return nil, err
 	}
 
 	if len(nodes) == 0 {
