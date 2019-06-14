@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"testing"
 
@@ -81,23 +82,69 @@ func TestCreateNetwork(t *testing.T) {
 	}
 }
 
-type networkDeleterMock struct {
-	networkList   func(ctx context.Context, options types.NetworkListOptions) ([]types.NetworkResource, error)
-	networkRemove func(ctx context.Context, networkID string) error
+type networkListerMock func(ctx context.Context, opts types.NetworkListOptions) ([]types.NetworkResource, error)
+
+func (n networkListerMock) NetworkList(ctx context.Context, opts types.NetworkListOptions) ([]types.NetworkResource, error) {
+	return n(ctx, opts)
 }
 
-func (d networkDeleterMock) NetworkList(ctx context.Context, options types.NetworkListOptions) ([]types.NetworkResource, error) {
-	return d.networkList(ctx, options)
+func TestNetworkList(t *testing.T) {
+	testCases := []struct {
+		desc         string
+		listError    error
+		networks     []types.NetworkResource
+		expectsError bool
+	}{
+		{
+			desc: "without error",
+			networks: []types.NetworkResource{
+				{ID: "Foo"},
+			},
+			listError:    nil,
+			expectsError: false,
+		},
+		{
+			desc: "with error",
+			networks: []types.NetworkResource{
+				{ID: "Foo"},
+			},
+			listError:    errors.New("foo"),
+			expectsError: true,
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.desc, func(t *testing.T) {
+			ctx := context.Background()
+			var sentOpts types.NetworkListOptions
+			client := networkListerMock(func(ctx context.Context, opts types.NetworkListOptions) ([]types.NetworkResource, error) {
+
+				sentOpts = opts
+				return test.networks, test.listError
+			})
+			clusterName := "test"
+
+			res, err := ListNetworks(ctx, client, clusterName)
+			if test.expectsError {
+				assert.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, test.networks, res)
+			assert.True(t, sentOpts.Filters.ExactMatch(ClusterNameLabel, clusterName))
+		})
+	}
 }
 
-func (d networkDeleterMock) NetworkRemove(ctx context.Context, networkID string) error {
-	return d.networkRemove(ctx, networkID)
+type networkRemoverMock func(ctx context.Context, networkID string) error
+
+func (n networkRemoverMock) NetworkRemove(ctx context.Context, networkID string) error {
+	return n(ctx, networkID)
 }
 
 func TestDeleteNetwork(t *testing.T) {
 	ctx := context.Background()
-
-	var listOpts types.NetworkListOptions
 	networks := []types.NetworkResource{
 		{ID: "a"},
 		{ID: "b"},
@@ -105,24 +152,14 @@ func TestDeleteNetwork(t *testing.T) {
 		{ID: "d"},
 	}
 
-	clusterName := "foo"
 	networkRemoved := make(chan string, len(networks))
 
-	client := networkDeleterMock{
-		networkList: func(ctx context.Context, options types.NetworkListOptions) ([]types.NetworkResource, error) {
-			listOpts = options
-			return networks, nil
-		},
-		networkRemove: func(ctx context.Context, networkID string) error {
-			networkRemoved <- networkID
-			return nil
-		},
-	}
+	client := networkRemoverMock(func(ctx context.Context, networkID string) error {
+		networkRemoved <- networkID
+		return nil
+	})
 
-	require.NoError(t, DeleteNetwork(ctx, client, clusterName))
-
-	// assert correctness of the filters passed to list network.
-	assert.True(t, listOpts.Filters.ExactMatch(ClusterNameLabel, clusterName))
+	require.NoError(t, DeleteNetworks(ctx, client, networks))
 
 	// assert that all the networks returned are removed.
 	close(networkRemoved)

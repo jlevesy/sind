@@ -243,37 +243,3 @@ func runContainer(ctx context.Context, client nodeCreator, cConfig *container.Co
 
 	return resp.ID, nil
 }
-
-type nodeDeleter interface {
-	ContainerList(context.Context, types.ContainerListOptions) ([]types.Container, error)
-	ContainerRemove(context.Context, string, types.ContainerRemoveOptions) error
-}
-
-// DeleteNodes removes all node for a given cluster name.
-func DeleteNodes(ctx context.Context, client nodeDeleter, clusterName string) error {
-	containers, err := ListContainers(ctx, client, clusterName)
-	if err != nil {
-		return fmt.Errorf("unable to get node list: %v", err)
-	}
-
-	errg, groupCtx := errgroup.WithContext(ctx)
-	for _, container := range containers {
-		cid := container.ID
-		errg.Go(func() error {
-			return client.ContainerRemove(
-				groupCtx,
-				cid,
-				types.ContainerRemoveOptions{
-					Force:         true,
-					RemoveVolumes: true,
-				},
-			)
-		})
-	}
-
-	if err = errg.Wait(); err != nil {
-		return fmt.Errorf("unable to remove a node: %v", err)
-	}
-
-	return nil
-}

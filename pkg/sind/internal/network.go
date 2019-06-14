@@ -55,32 +55,35 @@ func CreateNetwork(ctx context.Context, client networkCreator, cfg NetworkConfig
 	)
 }
 
-type networkDeleter interface {
-	NetworkList(ctx context.Context, options types.NetworkListOptions) ([]types.NetworkResource, error)
-	NetworkRemove(ctx context.Context, networkID string) error
+type networkLister interface {
+	NetworkList(ctx context.Context, opts types.NetworkListOptions) ([]types.NetworkResource, error)
 }
 
-// DeleteNetwork deletes all networks related to a clusterName.
-func DeleteNetwork(ctx context.Context, client networkDeleter, clusterName string) error {
-	networks, err := client.NetworkList(
+// ListNetworks returns all the networks related to a cluster.
+func ListNetworks(ctx context.Context, hostClient networkLister, clusterName string) ([]types.NetworkResource, error) {
+	return hostClient.NetworkList(
 		ctx,
 		types.NetworkListOptions{
 			Filters: filters.NewArgs(filters.Arg("label", ClusterLabel(clusterName))),
 		},
 	)
-	if err != nil {
-		return fmt.Errorf("unable to list cluster networks: %v", err)
-	}
+}
 
+type networkRemover interface {
+	NetworkRemove(ctx context.Context, networkID string) error
+}
+
+// DeleteNetworks deletes all given networks.
+func DeleteNetworks(ctx context.Context, hostClient networkRemover, networks []types.NetworkResource) error {
 	errg, groupCtx := errgroup.WithContext(ctx)
 	for _, network := range networks {
 		netID := network.ID
 		errg.Go(func() error {
-			return client.NetworkRemove(groupCtx, netID)
+			return hostClient.NetworkRemove(groupCtx, netID)
 		})
 	}
 
-	if err = errg.Wait(); err != nil {
+	if err := errg.Wait(); err != nil {
 		return fmt.Errorf("unable to delete a network: %v", err)
 	}
 
