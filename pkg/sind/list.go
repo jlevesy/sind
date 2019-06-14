@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	docker "github.com/docker/docker/client"
 	"github.com/jlevesy/sind/pkg/sind/internal"
 )
 
 // ListClusters list the clusters
-func ListClusters(ctx context.Context, hostClient *docker.Client) ([]ClusterStatus, error) {
+func ListClusters(ctx context.Context, hostClient internal.ContainerLister) ([]ClusterStatus, error) {
 	primaryNodes, err := internal.ListPrimaryContainers(ctx, hostClient)
 	if err != nil {
 		return nil, err

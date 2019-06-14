@@ -7,7 +7,6 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
-	docker "github.com/docker/docker/client"
 	"github.com/golang/sync/errgroup"
 )
 
@@ -17,7 +16,7 @@ type ContainerLister interface {
 }
 
 // ListPrimaryContainers returns the list of all primary containers known to a docker host.
-func ListPrimaryContainers(ctx context.Context, client *docker.Client) ([]types.Container, error) {
+func ListPrimaryContainers(ctx context.Context, client ContainerLister) ([]types.Container, error) {
 	return client.ContainerList(ctx, types.ContainerListOptions{
 		Filters: filters.NewArgs(
 			filters.Arg("label", ClusterNameLabel),

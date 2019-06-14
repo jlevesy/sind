@@ -2,7 +2,7 @@ package cli
 
 import (
 	"context"
-	"fmt"
+	"os"
 	"syscall"
 
 	docker "github.com/docker/docker/client"
@@ -48,7 +48,9 @@ func runList(cmd *cobra.Command, args []string) {
 	disgo.EndStep()
 	disgo.Infof("%s Found %d cluster(s)\n", style.Success(style.SymbolCheck), len(clusters))
 
-	for _, cluster := range clusters {
-		fmt.Println(cluster)
+	if len(clusters) == 0 {
+		return
 	}
+
+	internal.RenderClusterList(os.Stdout, clusters)
 }

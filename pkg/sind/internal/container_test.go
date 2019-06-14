@@ -11,6 +11,56 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestListPrimaryContainers(t *testing.T) {
+	testCases := []struct {
+		desc         string
+		listError    error
+		containers   []types.Container
+		expectsError bool
+	}{
+		{
+			desc: "without error",
+			containers: []types.Container{
+				{ID: "Foo"},
+			},
+			listError:    nil,
+			expectsError: false,
+		},
+		{
+			desc: "with error",
+			containers: []types.Container{
+				{ID: "Foo"},
+			},
+			listError:    errors.New("foo"),
+			expectsError: true,
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.desc, func(t *testing.T) {
+			ctx := context.Background()
+			var sentOpts types.ContainerListOptions
+			client := ContainerListerMock(func(ctx context.Context, opts types.ContainerListOptions) ([]types.Container, error) {
+
+				sentOpts = opts
+				return test.containers, test.listError
+			})
+			clusterName := "test"
+
+			res, err := ListPrimaryContainers(ctx, client)
+			if test.expectsError {
+				assert.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, test.containers, res)
+			assert.True(t, sentOpts.Filters.ExactMatch(ClusterNameLabel, clusterName))
+
+		})
+	}
+}
+
 func TestListContainers(t *testing.T) {
 	ctx := context.Background()
 	var sentOpts types.ContainerListOptions
