@@ -19,7 +19,6 @@ type ContainerLister interface {
 func ListPrimaryContainers(ctx context.Context, client ContainerLister) ([]types.Container, error) {
 	return client.ContainerList(ctx, types.ContainerListOptions{
 		Filters: filters.NewArgs(
-			filters.Arg("label", ClusterNameLabel),
 			filters.Arg("label", PrimaryNodeLabel()),
 		),
 		All: true,

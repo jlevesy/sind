@@ -19,12 +19,16 @@ func ListClusters(ctx context.Context, hostClient internal.ContainerLister) ([]C
 	for _, node := range primaryNodes {
 		clusterName, ok := node.Labels[internal.ClusterNameLabel]
 		if !ok {
-			return nil, fmt.Errorf("Node %q has not cluster name", node.ID)
+			return nil, fmt.Errorf("Node %q has no cluster name", node.ID)
 		}
 
 		status, err := InspectCluster(ctx, hostClient, clusterName)
 		if err != nil {
 			return nil, err
+		}
+
+		if status == nil {
+			return nil, fmt.Errorf("unknown cluster %q", clusterName)
 		}
 
 		result = append(result, *status)
