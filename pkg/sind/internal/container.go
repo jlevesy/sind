@@ -3,6 +3,8 @@ package internal
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -131,4 +133,75 @@ func StopContainers(ctx context.Context, hostClient containerStopper, containers
 	}
 
 	return nil
+}
+
+type containerContentCopier interface {
+	CopyToContainer(context.Context, string, string, io.Reader, types.CopyToContainerOptions) error
+}
+
+// CopyToContainers copy content at path to given containers.
+func CopyToContainers(ctx context.Context, hostClient containerContentCopier, containers []types.Container, contentPath, destPath string) error {
+	errg, groupCtx := errgroup.WithContext(ctx)
+	for _, container := range containers {
+		cID := container.ID
+		errg.Go(func() error {
+			file, err := os.Open(contentPath)
+			if err != nil {
+				return fmt.Errorf("unable to open content: %v", err)
+			}
+
+			defer file.Close()
+
+			if err := hostClient.CopyToContainer(groupCtx, cID, destPath, file, types.CopyToContainerOptions{}); err != nil {
+				return fmt.Errorf("unable to copy the content to container %q: %v", cID, err)
+			}
+
+			return nil
+		})
+	}
+
+	if err := errg.Wait(); err != nil {
+		return fmt.Errorf("unable to deploy the image to host: %v", err)
+	}
+
+	return nil
+}
+
+type executor interface {
+	ContainerExecCreate(context.Context, string, types.ExecConfig) (types.IDResponse, error)
+	ContainerExecStart(context.Context, string, types.ExecStartCheck) error
+}
+
+// ExecContainers execute given command to given containers
+func ExecContainers(ctx context.Context, hostClient executor, containers []types.Container, cmd []string) error {
+	errg, groupCtx := errgroup.WithContext(ctx)
+	for _, container := range containers {
+		cID := container.ID
+		errg.Go(func() error {
+			return execContainer(groupCtx, hostClient, cID, cmd)
+		})
+	}
+
+	if err := errg.Wait(); err != nil {
+		return fmt.Errorf("unable to exec command %v: %v", cmd, err)
+	}
+
+	return nil
+}
+
+func execContainer(ctx context.Context, client executor, cID string, cmd []string) error {
+	exec, err := client.ContainerExecCreate(
+		ctx,
+		cID,
+		types.ExecConfig{
+			Cmd:          cmd,
+			AttachStdout: true,
+			AttachStderr: true,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	return client.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{})
 }

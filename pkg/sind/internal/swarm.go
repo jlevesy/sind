@@ -58,11 +58,6 @@ func SwarmHost(client hoster) (string, error) {
 	return daemonURL.Host, nil
 }
 
-type executor interface {
-	ContainerExecCreate(context.Context, string, types.ExecConfig) (types.IDResponse, error)
-	ContainerExecStart(context.Context, string, types.ExecStartCheck) error
-}
-
 // ClusterParams are the params for the cluster.
 type ClusterParams struct {
 	IDs NodeIDs
@@ -121,21 +116,4 @@ func FormCluster(ctx context.Context, client executor, params ClusterParams) err
 	}
 
 	return nil
-}
-
-func execContainer(ctx context.Context, client executor, cID string, cmd []string) error {
-	exec, err := client.ContainerExecCreate(
-		ctx,
-		cID,
-		types.ExecConfig{
-			Cmd:          cmd,
-			AttachStdout: true,
-			AttachStderr: true,
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	return client.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{})
 }

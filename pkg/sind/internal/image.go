@@ -53,3 +53,26 @@ func PullImage(ctx context.Context, docker imagePuller, imageRef string) error {
 
 	return nil
 }
+
+type imageSaver interface {
+	ImageSave(ctx context.Context, refs []string) (io.ReadCloser, error)
+}
+
+// SaveImages saves all given images refs to given target.
+func SaveImages(ctx context.Context, hostClient imageSaver, dest io.WriteSeeker, refs []string) error {
+	imgReader, err := hostClient.ImageSave(ctx, refs)
+	if err != nil {
+		return fmt.Errorf("unable to save the images: %v", err)
+	}
+	defer imgReader.Close()
+
+	if bytes, err := io.Copy(dest, imgReader); err != nil {
+		return fmt.Errorf("unable to save the images (copied %d): %v", bytes, err)
+	}
+
+	if _, err = dest.Seek(0, 0); err != nil {
+		return fmt.Errorf("unable to seek the image: %v", err)
+	}
+
+	return nil
+}
