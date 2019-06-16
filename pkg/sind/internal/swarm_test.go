@@ -92,19 +92,6 @@ func TestSwarmHost(t *testing.T) {
 	}
 }
 
-type executorMock struct {
-	containerExecCreate func(context.Context, string, types.ExecConfig) (types.IDResponse, error)
-	containerExecStart  func(context.Context, string, types.ExecStartCheck) error
-}
-
-func (e *executorMock) ContainerExecCreate(ctx context.Context, cID string, opts types.ExecConfig) (types.IDResponse, error) {
-	return e.containerExecCreate(ctx, cID, opts)
-}
-
-func (e *executorMock) ContainerExecStart(ctx context.Context, eID string, opts types.ExecStartCheck) error {
-	return e.containerExecStart(ctx, eID, opts)
-}
-
 func TestFormCluster(t *testing.T) {
 	ctx := context.Background()
 	params := ClusterParams{

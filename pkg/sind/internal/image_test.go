@@ -5,10 +5,12 @@ import (
 	"context"
 	"errors"
 	"io"
+	"io/ioutil"
 	"testing"
 
 	"github.com/docker/docker/api/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type imageListerMock func(context.Context, types.ImageListOptions) ([]types.ImageSummary, error)
@@ -138,4 +140,56 @@ func TestPullImage(t *testing.T) {
 
 		})
 	}
+}
+
+type imageSaverMock func(ctx context.Context, refs []string) (io.ReadCloser, error)
+
+func (s imageSaverMock) ImageSave(ctx context.Context, refs []string) (io.ReadCloser, error) {
+	return s(ctx, refs)
+}
+
+type mockWriteSeeker struct {
+	io.Writer
+
+	seek func(int64, int) (int64, error)
+}
+
+func (m mockWriteSeeker) Seek(offset int64, whence int) (int64, error) {
+	return m.seek(offset, whence)
+}
+
+func TestSaveImages(t *testing.T) {
+	ctx := context.Background()
+
+	content := []byte("test")
+	refs := []string{"a", "b", "c"}
+
+	var (
+		seekCalled bool
+		seekOffset int64
+		seekWhence int
+	)
+
+	destBuf := &bytes.Buffer{}
+	dest := mockWriteSeeker{
+		Writer: destBuf,
+
+		seek: func(offset int64, whence int) (int64, error) {
+			seekCalled = true
+			seekOffset = offset
+			seekWhence = whence
+			return 0, nil
+		},
+	}
+
+	client := imageSaverMock(func(ctx context.Context, refs []string) (io.ReadCloser, error) {
+		return ioutil.NopCloser(bytes.NewBuffer(content)), nil
+	})
+
+	require.NoError(t, SaveImages(ctx, client, dest, refs))
+
+	assert.Equal(t, content, destBuf.Bytes())
+	assert.True(t, seekCalled)
+	assert.EqualValues(t, 0, seekOffset)
+	assert.EqualValues(t, 0, seekWhence)
 }

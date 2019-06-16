@@ -3,6 +3,10 @@ package internal
 import (
 	"context"
 	"errors"
+	"io"
+	"io/ioutil"
+	"os"
+	"sort"
 	"testing"
 	"time"
 
@@ -364,5 +368,148 @@ func TestStartContainers(t *testing.T) {
 				assert.Contains(t, startedCIDs, container.ID)
 			}
 		})
+	}
+}
+
+type containerContentCopierMock func(context.Context, string, string, io.Reader, types.CopyToContainerOptions) error
+
+func (c containerContentCopierMock) CopyToContainer(ctx context.Context, cID, path string, content io.Reader, opts types.CopyToContainerOptions) error {
+	return c(ctx, cID, path, content, opts)
+}
+
+type sentContent struct {
+	cID     string
+	path    string
+	content []byte
+}
+
+func TestCopyToContainers(t *testing.T) {
+	ctx := context.Background()
+
+	initialContent := []byte("content")
+	fileContent, err := ioutil.TempFile(os.TempDir(), "test_sind_copy_container")
+	require.NoError(t, err)
+
+	defer os.Remove(fileContent.Name())
+	defer fileContent.Close()
+
+	_, err = fileContent.Write(initialContent)
+	require.NoError(t, err)
+
+	_, err = fileContent.Seek(0, 0)
+	require.NoError(t, err)
+
+	destPath := "/toto"
+	containers := []types.Container{
+		{ID: "AAA"},
+		{ID: "BBB"},
+		{ID: "CCC"},
+	}
+
+	contentSent := make(chan sentContent, len(containers))
+
+	client := containerContentCopierMock(func(ctx context.Context, cID, path string, file io.Reader, opts types.CopyToContainerOptions) error {
+		contentBytes, err := ioutil.ReadAll(file)
+		require.NoError(t, err)
+
+		contentSent <- sentContent{
+			cID:     cID,
+			path:    path,
+			content: contentBytes,
+		}
+		return nil
+	})
+
+	require.NoError(t, CopyToContainers(ctx, client, containers, fileContent.Name(), destPath))
+
+	close(contentSent)
+
+	var sentContent []sentContent
+	for content := range contentSent {
+		sentContent = append(sentContent, content)
+	}
+
+	sort.Slice(sentContent, func(i, j int) bool { return sentContent[i].cID < sentContent[j].cID })
+
+	assert.Len(t, sentContent, len(containers))
+	for index, content := range sentContent {
+		assert.Equal(t, containers[index].ID, content.cID)
+		assert.Equal(t, destPath, content.path)
+		assert.Equal(t, initialContent, content.content)
+	}
+}
+
+type executorMock struct {
+	containerExecCreate func(context.Context, string, types.ExecConfig) (types.IDResponse, error)
+	containerExecStart  func(context.Context, string, types.ExecStartCheck) error
+}
+
+func (e *executorMock) ContainerExecCreate(ctx context.Context, cID string, opts types.ExecConfig) (types.IDResponse, error) {
+	return e.containerExecCreate(ctx, cID, opts)
+}
+
+func (e *executorMock) ContainerExecStart(ctx context.Context, eID string, opts types.ExecStartCheck) error {
+	return e.containerExecStart(ctx, eID, opts)
+}
+
+func TestExecContainers(t *testing.T) {
+	ctx := context.Background()
+
+	type execCreation struct {
+		cID string
+		Cmd []string
+	}
+
+	cmd := []string{"echo", "foo"}
+
+	containers := []types.Container{
+		{ID: "AAA"},
+		{ID: "BBB"},
+		{ID: "CCC"},
+	}
+
+	execCreated := make(chan execCreation, len(containers))
+	execStarted := make(chan string, len(containers))
+
+	client := executorMock{
+		containerExecCreate: func(ctx context.Context, cID string, opts types.ExecConfig) (types.IDResponse, error) {
+			assert.True(t, opts.AttachStdout)
+			assert.True(t, opts.AttachStderr)
+			execCreated <- execCreation{cID: cID, Cmd: opts.Cmd}
+			return types.IDResponse{
+				ID: cID,
+			}, nil
+		},
+		containerExecStart: func(ctx context.Context, eID string, opts types.ExecStartCheck) error {
+			execStarted <- eID
+			return nil
+		},
+	}
+
+	require.NoError(t, ExecContainers(ctx, &client, containers, cmd))
+
+	close(execCreated)
+	close(execStarted)
+
+	var (
+		createdExecs []execCreation
+		startedExecs []string
+	)
+
+	for e := range execCreated {
+		createdExecs = append(createdExecs, e)
+	}
+
+	for e := range execStarted {
+		startedExecs = append(startedExecs, e)
+	}
+
+	sort.Slice(createdExecs, func(i, j int) bool { return createdExecs[i].cID < createdExecs[j].cID })
+	sort.Strings(startedExecs)
+
+	for index, container := range containers {
+		assert.Equal(t, container.ID, createdExecs[index].cID)
+		assert.Equal(t, container.ID, startedExecs[index])
+		assert.Equal(t, cmd, createdExecs[index].Cmd)
 	}
 }
