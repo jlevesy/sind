@@ -2,21 +2,18 @@ package test
 
 import (
 	"context"
-	"io"
-	"io/ioutil"
 	"testing"
+	"time"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/filters"
 	docker "github.com/docker/docker/client"
 	"github.com/jlevesy/sind/pkg/sind"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestSindCanPushAnImageToClusterFromRefs(t *testing.T) {
+func TestSindCanStopAndStartACluster(t *testing.T) {
 	ctx := context.Background()
-	tag := "alpine:latest"
 
 	hostClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
 	require.NoError(t, err)
@@ -25,22 +22,32 @@ func TestSindCanPushAnImageToClusterFromRefs(t *testing.T) {
 		ClusterName: "test_create",
 		NetworkName: "test_create",
 
-		Managers: 1,
-		Workers:  2,
+		Managers: 3,
+		Workers:  4,
 	}
 	require.NoError(t, sind.CreateCluster(ctx, hostClient, params))
+
 	defer func() {
 		require.NoError(t, sind.DeleteCluster(ctx, hostClient, params.ClusterName))
 	}()
 
-	out, err := hostClient.ImagePull(ctx, tag, types.ImagePullOptions{})
-	require.NoError(t, err)
-	defer out.Close()
+	require.NoError(t, sind.StopCluster(ctx, hostClient, params.ClusterName))
 
-	_, err = io.Copy(ioutil.Discard, out)
+	clusterInfos, err := sind.InspectCluster(ctx, hostClient, params.ClusterName)
 	require.NoError(t, err)
 
-	require.NoError(t, sind.PushImageRefs(ctx, hostClient, params.ClusterName, []string{tag}))
+	for _, node := range clusterInfos.Nodes {
+		assert.Equal(t, "exited", node.State)
+	}
+
+	require.NoError(t, sind.StartCluster(ctx, hostClient, params.ClusterName))
+
+	clusterInfos, err = sind.InspectCluster(ctx, hostClient, params.ClusterName)
+	require.NoError(t, err)
+
+	for _, node := range clusterInfos.Nodes {
+		assert.Equal(t, "running", node.State)
+	}
 
 	swarmHost, err := sind.ClusterHost(ctx, hostClient, params.ClusterName)
 	require.NoError(t, err)
@@ -48,14 +55,12 @@ func TestSindCanPushAnImageToClusterFromRefs(t *testing.T) {
 	swarmClient, err := docker.NewClientWithOpts(docker.WithHost(swarmHost), docker.WithVersion("1.39"))
 	require.NoError(t, err)
 
-	imgs, err := swarmClient.ImageList(
-		ctx,
-		types.ImageListOptions{Filters: filters.NewArgs(filters.Arg("reference", tag))},
-	)
-	require.NoError(t, err)
-	require.Len(t, imgs, 1)
+	var info types.Info
 
-	img := imgs[0]
+	require.NoError(t, retry(10, time.Second, func() error { info, err = swarmClient.Info(ctx); return err }))
 
-	assert.Equal(t, img.RepoTags[0], tag)
+	require.True(t, info.Swarm.ControlAvailable)
+
+	assert.EqualValues(t, params.Managers, info.Swarm.Managers)
+	assert.EqualValues(t, params.Workers, info.Swarm.Nodes-info.Swarm.Managers)
 }

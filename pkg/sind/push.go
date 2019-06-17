@@ -1,153 +1,71 @@
 package sind
 
 import (
-	"archive/tar"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	"github.com/golang/sync/errgroup"
-
-	"github.com/docker/docker/api/types"
 	docker "github.com/docker/docker/client"
+	"github.com/jlevesy/sind/pkg/sind/internal"
 )
 
-// Errors.
-const (
-	ErrImageReferenceNotFound = "image reference not found"
-)
-
-// PushImage pushes an image from the host to the cluster.
-func (c *Cluster) PushImage(ctx context.Context, refs []string) error {
-	hostClient, err := c.Host.Client()
+// PushImageRefs pushes given refs to all node of a cluster.
+func PushImageRefs(ctx context.Context, hostClient *docker.Client, clusterName string, refs []string) error {
+	// TODO(jly) maybe pull the image refs here first ?
+	imagesFile, err := ioutil.TempFile(os.TempDir(), "sind_images")
 	if err != nil {
-		return fmt.Errorf("unable to get host client: %v", err)
+		return fmt.Errorf("unable to create a temporary archive file: %v", err)
 	}
 
-	imageContainerPath, archivePath, err := prepareArchive(ctx, hostClient, refs)
-	if err != nil {
-		return fmt.Errorf("unable to prepare the archive: %v", err)
-	}
-	defer os.Remove(archivePath)
+	defer os.Remove(imagesFile.Name())
+	defer imagesFile.Close()
 
-	containers, err := c.ContainerList(ctx)
-	if err != nil {
-		return fmt.Errorf("unable to get container list %v", err)
+	if err = internal.SaveImages(ctx, hostClient, imagesFile, refs); err != nil {
+		return fmt.Errorf("unable to save images to file: %v", err)
 	}
 
-	errg, groupCtx := errgroup.WithContext(ctx)
-	for _, container := range containers {
-		cID := container.ID
-		errg.Go(func() error {
-			return copyToContainer(groupCtx, hostClient, archivePath, cID)
-		})
-	}
-
-	if err = errg.Wait(); err != nil {
-		return fmt.Errorf("unable to deploy the image to host: %v", err)
-	}
-
-	errg, groupCtx = errgroup.WithContext(ctx)
-	for _, container := range containers {
-		cID := container.ID
-		errg.Go(func() error {
-			return execContainer(
-				groupCtx,
-				hostClient,
-				cID,
-				[]string{
-					"docker",
-					"load",
-					"-i",
-					imageContainerPath,
-				},
-			)
-		})
-	}
-
-	if err = errg.Wait(); err != nil {
-		return fmt.Errorf("unable to load the image on the host: %v", err)
-	}
-
-	return nil
+	return PushImageFile(ctx, hostClient, clusterName, imagesFile)
 }
 
-func copyToContainer(ctx context.Context, client *docker.Client, filePath, containerID string) error {
-	file, err := os.Open(filePath)
+// PushImageFile pushes a given image archive file on all the nodes of a given Cluster.
+func PushImageFile(ctx context.Context, hostClient *docker.Client, clusterName string, file *os.File) error {
+	containers, err := internal.ListContainers(ctx, hostClient, clusterName)
 	if err != nil {
-		return fmt.Errorf("unable to open file to deploy: %v", err)
+		return fmt.Errorf("unable to list cluster %q containers: %v", clusterName, err)
 	}
 
-	defer file.Close()
-
-	if err := client.CopyToContainer(ctx, containerID, "/", file, types.CopyToContainerOptions{}); err != nil {
-		return fmt.Errorf("unable to copy the image to container %s: %v", containerID, err)
-	}
-
-	return nil
-}
-
-func prepareArchive(ctx context.Context, hostClient *docker.Client, refs []string) (string, string, error) {
-	imgsFile, err := ioutil.TempFile("", "img_sind")
+	archiveFile, err := ioutil.TempFile(os.TempDir(), "sind_archive")
 	if err != nil {
-		return "", "", fmt.Errorf("unable to create the image file: %v", err)
+		return fmt.Errorf("unable to create a temporary archive file: %v", err)
 	}
 
-	defer func() {
-		imgsFile.Close()
-		os.Remove(imgsFile.Name())
-	}()
+	defer os.Remove(archiveFile.Name())
+	defer archiveFile.Close()
 
-	imgReader, err := hostClient.ImageSave(ctx, refs)
-	if err != nil {
-		return "", "", fmt.Errorf("unable to save the images to disk: %v", err)
-	}
-	defer imgReader.Close()
-
-	if bytes, err := io.Copy(imgsFile, imgReader); err != nil {
-		return "", "", fmt.Errorf("unable to save the images to disk (copied %d): %v", bytes, err)
+	if err = internal.TarFile(file, archiveFile); err != nil {
+		return fmt.Errorf("unable to tar file: %v", err)
 	}
 
-	if _, err = imgsFile.Seek(0, 0); err != nil {
-		return "", "", fmt.Errorf("unable to seek to the begining of the image file: %v", err)
+	if err = internal.CopyToContainers(ctx, hostClient, containers, archiveFile.Name(), "/"); err != nil {
+		return fmt.Errorf("unable to copy content to containers: %v", err)
 	}
 
-	tarImgsFile, err := ioutil.TempFile("", "tar_img_sind")
-	if err != nil {
-		return "", "", fmt.Errorf("unable to create the tar file: %v", err)
-	}
-	defer tarImgsFile.Close()
-
-	imgsFileInfo, err := imgsFile.Stat()
-	if err != nil {
-		return "", "", fmt.Errorf("unabel to collect images file info: %v", err)
-	}
-
-	tarWriter := tar.NewWriter(tarImgsFile)
-
-	err = tarWriter.WriteHeader(
-		&tar.Header{
-			Typeflag: tar.TypeReg,
-			Name:     imgsFileInfo.Name(),
-			Size:     imgsFileInfo.Size(),
-			Mode:     0664,
+	err = internal.ExecContainers(
+		ctx,
+		hostClient,
+		containers,
+		[]string{
+			"docker",
+			"load",
+			"-i",
+			filepath.Join("/", filepath.Base(file.Name())),
 		},
 	)
 	if err != nil {
-		return "", "", fmt.Errorf("unable to write tar file header: %v", err)
+		return fmt.Errorf("unable to load image on nodes daemons: %v", err)
 	}
 
-	bytes, err := io.Copy(tarWriter, imgsFile)
-	if err != nil {
-		return "", "", fmt.Errorf("unable to tar image files (wrote %d): %v", bytes, err)
-	}
-
-	if err = tarWriter.Close(); err != nil {
-		return "", "", fmt.Errorf("unable to close the tar writer properly (wrote %d): %v", bytes, err)
-	}
-
-	return filepath.Join("/", filepath.Base(imgsFile.Name())), tarImgsFile.Name(), nil
+	return nil
 }

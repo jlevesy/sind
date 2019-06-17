@@ -1,19 +1,23 @@
 package cli
 
 import (
-	"fmt"
+	"context"
 	"os"
-	"text/tabwriter"
+	"syscall"
 
-	"github.com/jlevesy/sind/pkg/store"
+	docker "github.com/docker/docker/client"
+	"github.com/jlevesy/sind/pkg/cli/internal"
+	"github.com/jlevesy/sind/pkg/sind"
 	"github.com/spf13/cobra"
+	"github.com/ullaakut/disgo"
+	"github.com/ullaakut/disgo/style"
 )
 
 var (
 	listCmd = &cobra.Command{
 		Use:     "list",
-		Short:   "List existing clusters.",
 		Aliases: []string{"ls"},
+		Short:   "List sind clusters.",
 		Run:     runList,
 	}
 )
@@ -23,21 +27,30 @@ func init() {
 }
 
 func runList(cmd *cobra.Command, args []string) {
-	st, err := store.New()
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	ctx, cancel = internal.WithSignal(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	disgo.StartStep("Connecting to the docker daemon")
+	client, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
 	if err != nil {
-		fail("unable to create store: %v\n", err)
+		fail(disgo.FailStepf("Unable to connect to the docker daemon: %v", err))
 	}
 
-	clusters, err := st.List()
+	disgo.StartStep("Listing clusters")
+	clusters, err := sind.ListClusters(ctx, client)
 	if err != nil {
-		fail("unable to list existing clusters: %v\n", err)
+		fail(disgo.FailStepf("Unable to list clusters: %v", err))
 	}
 
-	wr := tabwriter.NewWriter(os.Stdout, 4, 8, 0, '\t', 0)
-	fmt.Fprintf(wr, "NAME\tSWARM DOCKER HOST\tDOCKER HOST\t\n")
-	for _, cluster := range clusters {
-		fmt.Fprintf(wr, "%s\t%s\t%s\t\n", cluster.Name, cluster.Cluster.DockerHost(), cluster.Host.Host)
+	disgo.EndStep()
+	disgo.Infof("%s Found %d cluster(s)\n", style.Success(style.SymbolCheck), len(clusters))
+
+	if len(clusters) == 0 {
+		return
 	}
-	wr.Flush()
-	fmt.Printf("\nTotal: %d\n", len(clusters))
+
+	internal.RenderClusterList(os.Stdout, clusters)
 }

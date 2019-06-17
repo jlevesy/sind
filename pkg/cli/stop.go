@@ -13,18 +13,18 @@ import (
 )
 
 var (
-	deleteCmd = &cobra.Command{
-		Use:   "delete",
-		Short: "Delete a swarm cluster.",
-		Run:   runDelete,
+	stopCmd = &cobra.Command{
+		Use:   "stop",
+		Short: "Stop a sind cluster.",
+		Run:   runStop,
 	}
 )
 
 func init() {
-	rootCmd.AddCommand(deleteCmd)
+	rootCmd.AddCommand(stopCmd)
 }
 
-func runDelete(cmd *cobra.Command, args []string) {
+func runStop(cmd *cobra.Command, args []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -32,27 +32,26 @@ func runDelete(cmd *cobra.Command, args []string) {
 	defer cancel()
 
 	disgo.StartStep("Connecting to the docker daemon")
-
 	client, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
 	if err != nil {
 		fail(disgo.FailStepf("Unable to connect to the docker daemon: %v", err))
 	}
 
-	disgo.StartStepf("Checking if a cluster named %q exists", clusterName)
+	disgo.StartStepf("Checking if a cluster named %q already exists", clusterName)
 	clusterInfo, err := sind.InspectCluster(ctx, client, clusterName)
 	if err != nil {
-		fail(disgo.FailStepf("Unable to check if the cluster exists: %v", err))
+		fail(disgo.FailStepf("Unable to check if the cluster already exists: %v", err))
 	}
 
 	if clusterInfo == nil {
-		fail(disgo.FailStepf("Cluster %q does not exist, or is already deleted", clusterName))
+		fail(disgo.FailStepf("Cluster %q does not exists", clusterName))
 	}
 
-	disgo.StartStepf("Deleting cluster %q", clusterName)
-	if err = sind.DeleteCluster(ctx, client, clusterName); err != nil {
-		fail(disgo.FailStepf("Unable to delete the cluster %q: %v", clusterName, err))
+	disgo.StartStepf("Stopping cluster %q", clusterName)
+	if err = sind.StopCluster(ctx, client, clusterInfo.Name); err != nil {
+		fail(disgo.FailStepf("Unable to stop cluster %q: %v", clusterInfo.Name, err))
 	}
 
 	disgo.EndStep()
-	disgo.Infof("%s Cluster %q successfuly deleted !\n", style.Success(style.SymbolCheck), clusterName)
+	disgo.Infof("%s Cluster %q successfuly stopped\n", style.Success(style.SymbolCheck), clusterName)
 }

@@ -1,0 +1,37 @@
+---
+linters-settings:
+  govet:
+    check-shadowing: false
+  golint:
+    min-confidence: 0
+  gocyclo:
+    min-complexity: 10
+  maligned:
+    suggest-new: true
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  misspell:
+    locale: US
+  lll:
+    line-length: 180
+
+linters:
+  enable-all: true
+  disable:
+    - gosec
+    - dupl
+    - unparam
+    - maligned
+    - prealloc
+    - scopelint
+    - gochecknoinits
+    - gochecknoglobals
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - lll
+  exclude:
+    - "cyclomatic complexity \\d+ of func `CreateCluster` is high"

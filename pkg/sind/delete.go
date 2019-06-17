@@ -2,97 +2,30 @@ package sind
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	"github.com/golang/sync/errgroup"
-
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/filters"
+	docker "github.com/docker/docker/client"
+	"github.com/jlevesy/sind/pkg/sind/internal"
 )
 
-// Errors.
-const (
-	ErrNetworkNotFound = "network not found"
-)
-
-// Delete deletes the cluster.
-// It removes all containers and the network.
-func (c *Cluster) Delete(ctx context.Context) error {
-	// deleteContainers
-	if err := c.deleteContainers(ctx); err != nil {
-		return fmt.Errorf("unable to delete cluster containers: %v", err)
-	}
-
-	if err := c.deleteNetwork(ctx); err != nil {
-		return fmt.Errorf("unable to delete cluster network: %v", err)
-	}
-
-	return nil
-}
-
-func (c *Cluster) deleteContainers(ctx context.Context) error {
-	client, err := c.Host.Client()
+// DeleteCluster removes all ressources related to a sind cluster from the host.
+func DeleteCluster(ctx context.Context, client *docker.Client, clusterName string) error {
+	nodes, err := internal.ListContainers(ctx, client, clusterName)
 	if err != nil {
-		return fmt.Errorf("unable to get docker client: %v", err)
+		return fmt.Errorf("unable to list nodes: %v", err)
 	}
 
-	containers, err := c.ContainerList(ctx)
-	if err != nil {
-		return fmt.Errorf("unable to get container list: %v", err)
-	}
-
-	errg, groupCtx := errgroup.WithContext(ctx)
-	for _, container := range containers {
-		cid := container.ID
-		errg.Go(func() error {
-			return client.ContainerRemove(
-				groupCtx,
-				cid,
-				types.ContainerRemoveOptions{
-					Force:         true,
-					RemoveVolumes: true,
-				},
-			)
-		})
-	}
-
-	if err = errg.Wait(); err != nil {
-		return fmt.Errorf("unable to remove a container: %v", err)
-	}
-
-	return nil
-}
-
-func (c *Cluster) deleteNetwork(ctx context.Context) error {
-	client, err := c.Host.Client()
-	if err != nil {
-		return fmt.Errorf("unable to get docker client: %v", err)
-	}
-
-	networks, err := client.NetworkList(
-		ctx,
-		types.NetworkListOptions{
-			Filters: filters.NewArgs(filters.Arg("label", c.clusterLabel())),
-		},
-	)
+	nets, err := internal.ListNetworks(ctx, client, clusterName)
 	if err != nil {
 		return fmt.Errorf("unable to list cluster networks: %v", err)
 	}
-	if len(networks) == 0 {
-		return errors.New(ErrNetworkNotFound)
+
+	if err := internal.RemoveContainers(ctx, client, nodes); err != nil {
+		return fmt.Errorf("unable to delete nodes: %v", err)
 	}
 
-	errg, groupCtx := errgroup.WithContext(ctx)
-	for _, network := range networks {
-		netID := network.ID
-		errg.Go(func() error {
-			return client.NetworkRemove(groupCtx, netID)
-		})
-	}
-
-	if err = errg.Wait(); err != nil {
-		return fmt.Errorf("unable to delete a network: %v", err)
+	if err := internal.DeleteNetworks(ctx, client, nets); err != nil {
+		return fmt.Errorf("unable to delete networks: %v", err)
 	}
 
 	return nil

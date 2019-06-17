@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"os"
 	"syscall"
 
 	docker "github.com/docker/docker/client"
@@ -9,22 +10,21 @@ import (
 	"github.com/jlevesy/sind/pkg/sind"
 	"github.com/spf13/cobra"
 	"github.com/ullaakut/disgo"
-	"github.com/ullaakut/disgo/style"
 )
 
 var (
-	deleteCmd = &cobra.Command{
-		Use:   "delete",
-		Short: "Delete a swarm cluster.",
-		Run:   runDelete,
+	inspectCmd = &cobra.Command{
+		Use:   "inspect",
+		Short: "Inspect a specific cluster.",
+		Run:   runInspect,
 	}
 )
 
 func init() {
-	rootCmd.AddCommand(deleteCmd)
+	rootCmd.AddCommand(inspectCmd)
 }
 
-func runDelete(cmd *cobra.Command, args []string) {
+func runInspect(cmd *cobra.Command, args []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -32,27 +32,22 @@ func runDelete(cmd *cobra.Command, args []string) {
 	defer cancel()
 
 	disgo.StartStep("Connecting to the docker daemon")
-
 	client, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
 	if err != nil {
 		fail(disgo.FailStepf("Unable to connect to the docker daemon: %v", err))
 	}
 
-	disgo.StartStepf("Checking if a cluster named %q exists", clusterName)
+	disgo.StartStepf("Checking if a cluster named %q already exists", clusterName)
 	clusterInfo, err := sind.InspectCluster(ctx, client, clusterName)
 	if err != nil {
-		fail(disgo.FailStepf("Unable to check if the cluster exists: %v", err))
+		fail(disgo.FailStepf("Unable to check if the cluster already exists: %v", err))
 	}
 
 	if clusterInfo == nil {
-		fail(disgo.FailStepf("Cluster %q does not exist, or is already deleted", clusterName))
-	}
-
-	disgo.StartStepf("Deleting cluster %q", clusterName)
-	if err = sind.DeleteCluster(ctx, client, clusterName); err != nil {
-		fail(disgo.FailStepf("Unable to delete the cluster %q: %v", clusterName, err))
+		fail(disgo.FailStepf("Cluster %q does not exists", clusterName))
 	}
 
 	disgo.EndStep()
-	disgo.Infof("%s Cluster %q successfuly deleted !\n", style.Success(style.SymbolCheck), clusterName)
+
+	internal.RenderCluster(os.Stdout, *clusterInfo)
 }
