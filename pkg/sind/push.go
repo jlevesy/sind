@@ -14,23 +14,23 @@ import (
 // PushImageRefs pushes given refs to all node of a cluster.
 func PushImageRefs(ctx context.Context, hostClient *docker.Client, clusterName string, refs []string) error {
 	// TODO(jly) maybe pull the image refs here first ?
-	imageFiles, err := ioutil.TempFile(os.TempDir(), "sind_images")
+	imagesFile, err := ioutil.TempFile(os.TempDir(), "sind_images")
 	if err != nil {
 		return fmt.Errorf("unable to create a temporary archive file: %v", err)
 	}
 
-	defer os.Remove(imageFiles.Name())
-	defer imageFiles.Close()
+	defer os.Remove(imagesFile.Name())
+	defer imagesFile.Close()
 
-	if err = internal.SaveImages(ctx, hostClient, imageFiles, refs); err != nil {
+	if err = internal.SaveImages(ctx, hostClient, imagesFile, refs); err != nil {
 		return fmt.Errorf("unable to save images to file: %v", err)
 	}
 
-	return PushImageFile(ctx, hostClient, imageFiles, clusterName)
+	return PushImageFile(ctx, hostClient, clusterName, imagesFile)
 }
 
 // PushImageFile pushes a given image archive file on all the nodes of a given Cluster.
-func PushImageFile(ctx context.Context, hostClient *docker.Client, file *os.File, clusterName string) error {
+func PushImageFile(ctx context.Context, hostClient *docker.Client, clusterName string, file *os.File) error {
 	containers, err := internal.ListContainers(ctx, hostClient, clusterName)
 	if err != nil {
 		return fmt.Errorf("unable to list cluster %q containers: %v", clusterName, err)

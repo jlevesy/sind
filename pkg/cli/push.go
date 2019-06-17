@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"os"
 	"syscall"
 
 	docker "github.com/docker/docker/client"
@@ -9,6 +10,7 @@ import (
 	"github.com/jlevesy/sind/pkg/sind"
 	"github.com/spf13/cobra"
 	"github.com/ullaakut/disgo"
+	"github.com/ullaakut/disgo/style"
 )
 
 var (
@@ -17,10 +19,14 @@ var (
 		Short: "Push an image to the cluster.",
 		Run:   runPush,
 	}
+
+	filePath string
 )
 
 func init() {
 	rootCmd.AddCommand(pushCmd)
+
+	pushCmd.Flags().StringVarP(&filePath, "file", "f", "", "Path to an image archive.")
 }
 
 func runPush(cmd *cobra.Command, args []string) {
@@ -46,10 +52,30 @@ func runPush(cmd *cobra.Command, args []string) {
 		fail(disgo.FailStepf("Cluster %q does not exists", clusterName))
 	}
 
+	if filePath != "" {
+		pushFile(ctx, client, clusterName, filePath)
+		return
+	}
+
 	disgo.StartStepf("Pushing images %q to cluster %q", args, clusterName)
 	if err = sind.PushImageRefs(ctx, client, clusterInfo.Name, args); err != nil {
 		fail(disgo.FailStepf("Unable to push images %q to %q: %v", args, clusterName, err))
 	}
-
 	disgo.EndStep()
+	disgo.Infof("%s Successfully pushed images %q to cluster %q\n", style.Success(style.SymbolCheck), args, clusterName)
+}
+
+func pushFile(ctx context.Context, client *docker.Client, clusterName string, filePath string) {
+	disgo.StartStepf("Pushing image archive at %q to cluster %q", filePath, clusterName)
+	file, err := os.Open(filePath)
+	if err != nil {
+		fail(disgo.FailStepf("Unable to open file %q: %v", filePath, err))
+	}
+	defer file.Close()
+
+	if err = sind.PushImageFile(ctx, client, clusterName, file); err != nil {
+		fail(disgo.FailStepf("Unable to push image archive %q to %q: %v", filePath, clusterName, err))
+	}
+	disgo.EndStep()
+	disgo.Infof("%s Successfully pushed images archive %q to cluster %q\n", style.Success(style.SymbolCheck), filePath, clusterName)
 }
