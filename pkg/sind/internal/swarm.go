@@ -67,7 +67,7 @@ type ClusterParams struct {
 	WorkerJoinToken  string
 }
 
-// FormCluster will form the swarm cluster.
+// FormCluster make managers and workers to join the primary node.
 func FormCluster(ctx context.Context, client executor, params ClusterParams) error {
 	errg, groupCtx := errgroup.WithContext(ctx)
 

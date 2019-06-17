@@ -8,7 +8,7 @@ import (
 	"github.com/jlevesy/sind/pkg/sind/internal"
 )
 
-// DeleteCluster will remove all ressources related to a sind cluster according to its name.
+// DeleteCluster removes all ressources related to a sind cluster from the host.
 func DeleteCluster(ctx context.Context, client *docker.Client, clusterName string) error {
 	nodes, err := internal.ListContainers(ctx, client, clusterName)
 	if err != nil {

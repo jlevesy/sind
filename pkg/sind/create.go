@@ -16,7 +16,7 @@ const (
 	DefaultNodeImageName = "docker:18.09-dind"
 )
 
-// ClusterConfiguration are args to pass to CreateCluster.
+// ClusterConfiguration represents the configuration for a new cluster.
 type ClusterConfiguration struct {
 	ClusterName string
 	NetworkName string
