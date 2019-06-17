@@ -54,5 +54,5 @@ func runDelete(cmd *cobra.Command, args []string) {
 	}
 
 	disgo.EndStep()
-	disgo.Infof("%s Cluster %s successfuly deleted !\n", style.Success(style.SymbolCheck), clusterName)
+	disgo.Infof("%s Cluster %q successfuly deleted !\n", style.Success(style.SymbolCheck), clusterName)
 }

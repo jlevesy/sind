@@ -62,7 +62,7 @@ func runCreate(cmd *cobra.Command, args []string) {
 		fail(disgo.FailStepf("Cluster %q already exists, run sind delete first to remove it.", clusterName))
 	}
 
-	disgo.StartStepf("Creating a new cluster %q with %d managers and %d, workers", clusterName, managers, workers)
+	disgo.StartStepf("Creating a new cluster %q with %d managers and %d workers", clusterName, managers, workers)
 	clusterConfig := sind.ClusterConfiguration{
 		Managers:     managers,
 		Workers:      workers,
