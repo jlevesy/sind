@@ -31,7 +31,7 @@ func main() {
 		Workers:  2,
 	}
 
-	if err := sind.CreateCluster(createCtx, client, params); err != nil {
+	if err = sind.CreateCluster(createCtx, client, params); err != nil {
 		log.Fatalf("unable to create cluster %v", err)
 	}
 

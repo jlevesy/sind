@@ -118,12 +118,12 @@ func TestPrimaryContainer(t *testing.T) {
 		},
 		{
 			desc:          "multiple containers found",
-			containers:    []types.Container{types.Container{}, types.Container{}},
+			containers:    []types.Container{{}, {}},
 			expectedError: errors.New("primary container for cluster \"blah\" is not unique"),
 		},
 		{
 			desc:           "primary container found",
-			containers:     []types.Container{types.Container{ID: "123456789"}},
+			containers:     []types.Container{{ID: "123456789"}},
 			expectedResult: &types.Container{ID: "123456789"},
 		},
 	}

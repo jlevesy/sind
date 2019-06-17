@@ -119,7 +119,7 @@ func TestCreateNodes(t *testing.T) {
 		&container.Config{
 			Hostname:     "sind-TestCluster-manager-0",
 			Image:        cfg.ImageRef,
-			ExposedPorts: nat.PortSet(map[nat.Port]struct{}{nat.Port("8080/tcp"): struct{}{}}),
+			ExposedPorts: nat.PortSet(map[nat.Port]struct{}{nat.Port("8080/tcp"): {}}),
 			Labels: map[string]string{
 				"com.sind.cluster.name": "TestCluster",
 				"com.sind.cluster.role": "primary",
@@ -134,7 +134,7 @@ func TestCreateNodes(t *testing.T) {
 			Privileged:      true,
 			PublishAllPorts: true,
 			PortBindings: map[nat.Port][]nat.PortBinding{
-				nat.Port("8080/tcp"): []nat.PortBinding{
+				nat.Port("8080/tcp"): {
 					{HostPort: "8080"},
 				},
 			},

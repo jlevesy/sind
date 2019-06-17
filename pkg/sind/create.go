@@ -65,7 +65,7 @@ func CreateCluster(ctx context.Context, hostClient *docker.Client, params Cluste
 	}
 
 	if params.PullImage || !imageExists {
-		if err := internal.PullImage(ctx, hostClient, params.imageName()); err != nil {
+		if err = internal.PullImage(ctx, hostClient, params.imageName()); err != nil {
 			return fmt.Errorf("unable to pull the %s image: %v", params.imageName(), err)
 		}
 	}

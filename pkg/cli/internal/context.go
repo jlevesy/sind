@@ -6,7 +6,7 @@ import (
 	"os/signal"
 )
 
-// WithSignal returns a context cancelled if the process receives one of the following signal.
+// WithSignal returns a context canceled if the process receives one of the following signal.
 func WithSignal(parent context.Context, signals ...os.Signal) (context.Context, func()) {
 	ctx, cancel := context.WithCancel(parent)
 

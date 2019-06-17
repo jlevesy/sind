@@ -72,7 +72,7 @@ func TestListClusters(t *testing.T) {
 				},
 			},
 			clusters: map[string][]types.Container{
-				"foo": []types.Container{
+				"foo": {
 					{
 						ID: "1",
 						Labels: map[string]string{
@@ -80,7 +80,7 @@ func TestListClusters(t *testing.T) {
 						},
 					},
 				},
-				"bar": []types.Container{
+				"bar": {
 					{
 						ID: "1",
 						Labels: map[string]string{
