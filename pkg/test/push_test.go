@@ -1,44 +1,61 @@
 package test
 
 import (
+	"context"
+	"io"
+	"io/ioutil"
 	"testing"
+
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
+	docker "github.com/docker/docker/client"
+	"github.com/jlevesy/sind/pkg/sind"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestSindCanPushAnImageToCluster(t *testing.T) {
-	// ctx := context.Background()
-	// tag := "alpine:latest"
+func TestSindCanPushAnImageToClusterFromRefs(t *testing.T) {
+	ctx := context.Background()
+	tag := "alpine:latest"
 
-	// params := sind.CreateClusterParams{ClusterName: "test_push", NetworkName: "test_push", Managers: 1}
-	// cluster, err := sind.CreateCluster(ctx, params)
-	// require.NoError(t, err)
+	hostClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
+	require.NoError(t, err)
 
-	// defer func() {
-	// 	require.NoError(t, cluster.Delete(ctx))
-	// }()
+	params := sind.ClusterConfiguration{
+		ClusterName: "test_create",
+		NetworkName: "test_create",
 
-	// hostClient, err := cluster.Host.Client()
-	// require.NoError(t, err)
+		Managers: 1,
+		Workers:  2,
+	}
+	require.NoError(t, sind.CreateCluster(ctx, hostClient, params))
+	defer func() {
+		require.NoError(t, sind.DeleteCluster(ctx, hostClient, params.ClusterName))
+	}()
 
-	// out, err := hostClient.ImagePull(ctx, tag, types.ImagePullOptions{})
-	// require.NoError(t, err)
-	// defer out.Close()
+	out, err := hostClient.ImagePull(ctx, tag, types.ImagePullOptions{})
+	require.NoError(t, err)
+	defer out.Close()
 
-	// _, err = io.Copy(ioutil.Discard, out)
-	// require.NoError(t, err)
+	_, err = io.Copy(ioutil.Discard, out)
+	require.NoError(t, err)
 
-	// require.NoError(t, cluster.PushImage(ctx, []string{tag}))
+	require.NoError(t, sind.PushImageRefs(ctx, hostClient, params.ClusterName, []string{tag}))
 
-	// swarmClient, err := cluster.Cluster.Client()
-	// require.NoError(t, err)
+	swarmHost, err := sind.ClusterHost(ctx, hostClient, params.ClusterName)
+	require.NoError(t, err)
 
-	// imgs, err := swarmClient.ImageList(
-	// 	ctx,
-	// 	types.ImageListOptions{Filters: filters.NewArgs(filters.Arg("reference", tag))},
-	// )
-	// require.NoError(t, err)
-	// require.Len(t, imgs, 1)
+	swarmClient, err := docker.NewClientWithOpts(docker.WithHost(swarmHost), docker.WithVersion("1.39"))
+	require.NoError(t, err)
 
-	// img := imgs[0]
+	imgs, err := swarmClient.ImageList(
+		ctx,
+		types.ImageListOptions{Filters: filters.NewArgs(filters.Arg("reference", tag))},
+	)
+	require.NoError(t, err)
+	require.Len(t, imgs, 1)
 
-	// assert.Equal(t, img.RepoTags[0], tag)
+	img := imgs[0]
+
+	assert.Equal(t, img.RepoTags[0], tag)
 }
