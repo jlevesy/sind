@@ -4,7 +4,7 @@ jobs:
   install:
     working_directory: ~/sind
     docker:
-      - image: circleci/golang:1.12.1
+      - image: circleci/golang:1.12.6
     steps:
       - checkout
       - restore_cache:
@@ -26,8 +26,8 @@ jobs:
           name: Install and Setup Go
           command: |
             sudo rm -rf /usr/local/go
-            curl -sSfL https://dl.google.com/go/go1.12.1.linux-amd64.tar.gz -o go.tgz
-            echo "2a3fdabf665496a0db5f41ec6af7a9b15a49fbe71a85a50ca38b1f13a103aeec *go.tgz" | sha256sum -c -
+            curl -sSfL https://dl.google.com/go/go1.12.6.linux-amd64.tar.gz -o go.tgz
+            echo "dbcf71a3c1ea53b8d54ef1b48c85a39a6c9a935d01fc8291ff2b92028e59913c *go.tgz" | sha256sum -c -
             sudo tar --overwrite -C /usr/local -xzf go.tgz
             rm go.tgz
             sudo mkdir -p "/go/{pkg/mod,src,bin}" && sudo chmod -R 777 /go
@@ -43,7 +43,7 @@ jobs:
 
   unit_test:
     docker:
-      - image: circleci/golang:1.12.1
+      - image: circleci/golang:1.12.6
     working_directory: ~/sind
     steps:
       - checkout
@@ -63,7 +63,7 @@ jobs:
 
   release:
     docker:
-      - image: circleci/golang:1.12.1
+      - image: circleci/golang:1.12.6
     working_directory: ~/sind
     steps:
       - checkout
