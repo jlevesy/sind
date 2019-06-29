@@ -53,5 +53,5 @@ func runStart(cmd *cobra.Command, args []string) {
 	}
 
 	disgo.EndStep()
-	disgo.Infof("%s Cluster %q successfuly started\n", style.Success(style.SymbolCheck), clusterName)
+	disgo.Infof("%s Cluster %q successfully started\n", style.Success(style.SymbolCheck), clusterName)
 }
