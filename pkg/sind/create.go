@@ -13,7 +13,7 @@ import (
 
 const (
 	// DefaultNodeImageName is the default image name to use for creating swarm nodes.
-	DefaultNodeImageName = "docker:18.09-dind"
+	DefaultNodeImageName = "docker:19.03-dind"
 )
 
 // ClusterConfiguration represents the configuration for a new cluster.

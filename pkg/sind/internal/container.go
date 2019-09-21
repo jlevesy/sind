@@ -203,5 +203,9 @@ func execContainer(ctx context.Context, client executor, cID string, cmd []strin
 		return err
 	}
 
-	return client.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{})
+	if err := client.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{}); err != nil {
+		return err
+	}
+
+	return nil
 }

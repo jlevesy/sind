@@ -22,8 +22,8 @@ func TestSindCanPushAnImageToClusterFromRefs(t *testing.T) {
 	require.NoError(t, err)
 
 	params := sind.ClusterConfiguration{
-		ClusterName: "test_create",
-		NetworkName: "test_create",
+		ClusterName: "test_push",
+		NetworkName: "test_push",
 
 		Managers: 1,
 		Workers:  2,

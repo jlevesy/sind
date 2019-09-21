@@ -120,6 +120,8 @@ func TestCreateNodes(t *testing.T) {
 			Hostname:     "sind-TestCluster-manager-0",
 			Image:        cfg.ImageRef,
 			ExposedPorts: nat.PortSet(map[nat.Port]struct{}{nat.Port("8080/tcp"): {}}),
+			Entrypoint:   []string{"dockerd"},
+			Cmd:          []string{"-H unix:///var/run/docker.sock", "-H tcp://0.0.0.0:2375"},
 			Labels: map[string]string{
 				"com.sind.cluster.name": "TestCluster",
 				"com.sind.cluster.role": "primary",
@@ -164,8 +166,9 @@ func TestCreateNodes(t *testing.T) {
 		assert.Equal(
 			t,
 			&container.Config{
-				Hostname: expectedContainerName,
-				Image:    cfg.ImageRef,
+				Hostname:   expectedContainerName,
+				Image:      cfg.ImageRef,
+				Entrypoint: []string{"dockerd"},
 				Labels: map[string]string{
 					"com.sind.cluster.name": "TestCluster",
 					"com.sind.cluster.role": "manager",
@@ -203,8 +206,9 @@ func TestCreateNodes(t *testing.T) {
 		assert.Equal(
 			t,
 			&container.Config{
-				Hostname: expectedContainerName,
-				Image:    cfg.ImageRef,
+				Hostname:   expectedContainerName,
+				Image:      cfg.ImageRef,
+				Entrypoint: []string{"dockerd"},
 				Labels: map[string]string{
 					"com.sind.cluster.name": "TestCluster",
 					"com.sind.cluster.role": "worker",
