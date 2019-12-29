@@ -27,6 +27,8 @@ linters:
     - scopelint
     - gochecknoinits
     - gochecknoglobals
+    # - gomnd
+    # - funlen
 
 issues:
   exclude-rules:
