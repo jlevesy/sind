@@ -24,12 +24,14 @@ func SwarmDefaultListenAddress() string {
 // SwarmPort returns the port to use to communicate with the swarm cluster on given primary container.
 func SwarmPort(container types.Container) (uint16, error) {
 	var swarmPort *types.Port
+
 	for _, port := range container.Ports {
 		if port.PrivatePort != dockerDaemonPort {
 			continue
 		}
 
 		swarmPort = &port
+
 		break
 	}
 
@@ -75,6 +77,7 @@ func FormCluster(ctx context.Context, client executor, params ClusterParams) err
 
 	for _, managerID := range params.IDs.Managers {
 		cid := managerID
+
 		errg.Go(func() error {
 			return execContainer(
 				groupCtx,
@@ -94,6 +97,7 @@ func FormCluster(ctx context.Context, client executor, params ClusterParams) err
 
 	for _, workerID := range params.IDs.Workers {
 		cid := workerID
+
 		errg.Go(func() error {
 			return execContainer(
 				groupCtx,

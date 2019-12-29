@@ -62,6 +62,7 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 	// Create the primary node.
 	primaryIndex := managerIndex
 	primaryIPSuffix := nodeIPIdentifier
+
 	errg.Go(func() error {
 		nodeName := fmt.Sprintf("sind-%s-manager-%d", cfg.ClusterName, primaryIndex)
 		cID, err := runContainer(
@@ -70,10 +71,15 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 			&container.Config{
 				Hostname:     nodeName,
 				Image:        cfg.ImageRef,
+				Entrypoint:   []string{"dockerd"},
 				ExposedPorts: nat.PortSet(exposedPorts),
 				Labels: map[string]string{
 					ClusterNameLabel: cfg.ClusterName,
 					NodeRoleLabel:    NodeRolePrimary,
+				},
+				Cmd: []string{
+					"-H unix:///var/run/docker.sock",
+					"-H tcp://0.0.0.0:2375",
 				},
 			},
 			&container.HostConfig{
@@ -113,14 +119,16 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 	for ; managerIndex < cfg.Managers; managerIndex++ {
 		idx := managerIndex
 		ipSuffix := nodeIPIdentifier
+
 		errg.Go(func() error {
 			nodeName := fmt.Sprintf("sind-%s-manager-%d", cfg.ClusterName, idx)
 			cID, err := runContainer(
 				groupCtx,
 				docker,
 				&container.Config{
-					Image:    cfg.ImageRef,
-					Hostname: nodeName,
+					Image:      cfg.ImageRef,
+					Entrypoint: []string{"dockerd"},
+					Hostname:   nodeName,
 					Labels: map[string]string{
 						ClusterNameLabel: cfg.ClusterName,
 						NodeRoleLabel:    NodeRoleManager,
@@ -160,14 +168,16 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 	for ; workerIndex < cfg.Workers; workerIndex++ {
 		idx := workerIndex
 		ipSuffix := nodeIPIdentifier
+
 		errg.Go(func() error {
 			nodeName := fmt.Sprintf("sind-%s-worker-%d", cfg.ClusterName, idx)
 			cID, err := runContainer(
 				ctx,
 				docker,
 				&container.Config{
-					Image:    cfg.ImageRef,
-					Hostname: nodeName,
+					Image:      cfg.ImageRef,
+					Hostname:   nodeName,
+					Entrypoint: []string{"dockerd"},
 					Labels: map[string]string{
 						ClusterNameLabel: cfg.ClusterName,
 						NodeRoleLabel:    NodeRoleWorker,

@@ -26,10 +26,10 @@ type networkCreator interface {
 }
 
 // PickSubnet returns a subnet to use for the container network.
-// TODO at the moment we pick randomly a subnet, this can be improved.
 func PickSubnet() (*net.IPNet, error) {
 	rand.Seed(time.Now().UnixNano())
 	_, res, err := net.ParseCIDR(fmt.Sprintf("10.0.%d.0/24", rand.Intn(256)))
+
 	return res, err
 }
 
@@ -76,8 +76,10 @@ type networkRemover interface {
 // DeleteNetworks deletes all given networks.
 func DeleteNetworks(ctx context.Context, hostClient networkRemover, networks []types.NetworkResource) error {
 	errg, groupCtx := errgroup.WithContext(ctx)
+
 	for _, network := range networks {
 		netID := network.ID
+
 		errg.Go(func() error {
 			return hostClient.NetworkRemove(groupCtx, netID)
 		})

@@ -32,12 +32,14 @@ func runStop(cmd *cobra.Command, args []string) {
 	defer cancel()
 
 	disgo.StartStep("Connecting to the docker daemon")
-	client, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
+
+	client, err := docker.NewClientWithOpts(internal.DefaultDockerOpts...)
 	if err != nil {
 		fail(disgo.FailStepf("Unable to connect to the docker daemon: %v", err))
 	}
 
 	disgo.StartStepf("Checking if a cluster named %q already exists", clusterName)
+
 	clusterInfo, err := sind.InspectCluster(ctx, client, clusterName)
 	if err != nil {
 		fail(disgo.FailStepf("Unable to check if the cluster already exists: %v", err))
@@ -48,6 +50,7 @@ func runStop(cmd *cobra.Command, args []string) {
 	}
 
 	disgo.StartStepf("Stopping cluster %q", clusterName)
+
 	if err = sind.StopCluster(ctx, client, clusterInfo.Name); err != nil {
 		fail(disgo.FailStepf("Unable to stop cluster %q: %v", clusterInfo.Name, err))
 	}

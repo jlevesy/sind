@@ -137,7 +137,6 @@ func TestPullImage(t *testing.T) {
 			if test.shouldClose {
 				assert.True(t, readerClosed)
 			}
-
 		})
 	}
 }

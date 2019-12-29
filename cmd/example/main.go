@@ -18,7 +18,7 @@ func main() {
 	createCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	client, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
+	client, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
 	if err != nil {
 		log.Fatalf("unable to create docker client: %v", err)
 	}
@@ -38,6 +38,7 @@ func main() {
 	defer func() {
 		deleteCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
+
 		if err = sind.DeleteCluster(deleteCtx, client, params.ClusterName); err != nil {
 			log.Fatalf("unable to delete the cluster:  %v", err)
 		}

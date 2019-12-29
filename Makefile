@@ -16,7 +16,7 @@ dry_release: clean
 #
 
 .PHONY: test
-test: lint unit_test integration_test
+test: unit_test integration_test
 
 .PHONY: integration_test
 integration_test:
@@ -38,7 +38,7 @@ unit_test:
 
 .PHONY: lint
 lint:
-	golangci-lint run
+	golangci-lint run -c .golangci.yml
 
 .PHONY: clean_docker
 clean_docker:

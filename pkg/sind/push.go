@@ -13,7 +13,6 @@ import (
 
 // PushImageRefs pushes given refs to all node of a cluster.
 func PushImageRefs(ctx context.Context, hostClient *docker.Client, clusterName string, refs []string) error {
-	// TODO(jly) maybe pull the image refs here first ?
 	imagesFile, err := ioutil.TempFile(os.TempDir(), "sind_images")
 	if err != nil {
 		return fmt.Errorf("unable to create a temporary archive file: %v", err)

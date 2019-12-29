@@ -18,23 +18,26 @@ func TestSindCanPushAnImageToClusterFromRefs(t *testing.T) {
 	ctx := context.Background()
 	tag := "alpine:latest"
 
-	hostClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
+	hostClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
 	require.NoError(t, err)
 
 	params := sind.ClusterConfiguration{
-		ClusterName: "test_create",
-		NetworkName: "test_create",
+		ClusterName: "test_push",
+		NetworkName: "test_push",
 
 		Managers: 1,
 		Workers:  2,
 	}
+
 	require.NoError(t, sind.CreateCluster(ctx, hostClient, params))
+
 	defer func() {
 		require.NoError(t, sind.DeleteCluster(ctx, hostClient, params.ClusterName))
 	}()
 
 	out, err := hostClient.ImagePull(ctx, tag, types.ImagePullOptions{})
 	require.NoError(t, err)
+
 	defer out.Close()
 
 	_, err = io.Copy(ioutil.Discard, out)
@@ -45,7 +48,7 @@ func TestSindCanPushAnImageToClusterFromRefs(t *testing.T) {
 	swarmHost, err := sind.ClusterHost(ctx, hostClient, params.ClusterName)
 	require.NoError(t, err)
 
-	swarmClient, err := docker.NewClientWithOpts(docker.WithHost(swarmHost), docker.WithVersion("1.39"))
+	swarmClient, err := docker.NewClientWithOpts(docker.WithHost(swarmHost), docker.WithAPIVersionNegotiation())
 	require.NoError(t, err)
 
 	imgs, err := swarmClient.ImageList(

@@ -12,8 +12,10 @@ import (
 func RenderClusterList(out io.Writer, clusters []sind.ClusterStatus) {
 	wr := tabwriter.NewWriter(out, 4, 8, 2, '\t', 0)
 	defer wr.Flush()
+
 	fmt.Fprintf(wr, "\nName\tStatus\tManagers\tWorkers\t\n")
 	fmt.Fprintf(wr, "----\t------\t--------\t-------\t\n")
+
 	for _, cluster := range clusters {
 		fmt.Fprintf(
 			wr,

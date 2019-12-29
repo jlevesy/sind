@@ -33,12 +33,13 @@ func runDelete(cmd *cobra.Command, args []string) {
 
 	disgo.StartStep("Connecting to the docker daemon")
 
-	client, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
+	client, err := docker.NewClientWithOpts(internal.DefaultDockerOpts...)
 	if err != nil {
 		fail(disgo.FailStepf("Unable to connect to the docker daemon: %v", err))
 	}
 
 	disgo.StartStepf("Checking if a cluster named %q exists", clusterName)
+
 	clusterInfo, err := sind.InspectCluster(ctx, client, clusterName)
 	if err != nil {
 		fail(disgo.FailStepf("Unable to check if the cluster exists: %v", err))
@@ -49,6 +50,7 @@ func runDelete(cmd *cobra.Command, args []string) {
 	}
 
 	disgo.StartStepf("Deleting cluster %q", clusterName)
+
 	if err = sind.DeleteCluster(ctx, client, clusterName); err != nil {
 		fail(disgo.FailStepf("Unable to delete the cluster %q: %v", clusterName, err))
 	}

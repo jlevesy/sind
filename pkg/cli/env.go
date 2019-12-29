@@ -31,7 +31,7 @@ func runEnv(cmd *cobra.Command, args []string) {
 	ctx, cancel = internal.WithSignal(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	client, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
+	client, err := docker.NewClientWithOpts(internal.DefaultDockerOpts...)
 	if err != nil {
 		fmt.Printf("unable to collect to the docker daemon: %v", err)
 		os.Exit(1)
