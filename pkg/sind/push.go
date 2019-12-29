@@ -12,7 +12,7 @@ import (
 )
 
 // PushImageRefs pushes given refs to all node of a cluster.
-func PushImageRefs(ctx context.Context, hostClient *docker.Client, clusterName string, refs []string) error {
+func PushImageRefs(ctx context.Context, hostClient *docker.Client, clusterName string, jobs int, refs []string) error {
 	imagesFile, err := ioutil.TempFile(os.TempDir(), "sind_images")
 	if err != nil {
 		return fmt.Errorf("unable to create a temporary archive file: %v", err)
@@ -25,11 +25,11 @@ func PushImageRefs(ctx context.Context, hostClient *docker.Client, clusterName s
 		return fmt.Errorf("unable to save images to file: %v", err)
 	}
 
-	return PushImageFile(ctx, hostClient, clusterName, imagesFile)
+	return PushImageFile(ctx, hostClient, clusterName, jobs, imagesFile)
 }
 
 // PushImageFile pushes a given image archive file on all the nodes of a given Cluster.
-func PushImageFile(ctx context.Context, hostClient *docker.Client, clusterName string, file *os.File) error {
+func PushImageFile(ctx context.Context, hostClient *docker.Client, clusterName string, jobs int, file *os.File) error {
 	containers, err := internal.ListContainers(ctx, hostClient, clusterName)
 	if err != nil {
 		return fmt.Errorf("unable to list cluster %q containers: %v", clusterName, err)
@@ -47,7 +47,7 @@ func PushImageFile(ctx context.Context, hostClient *docker.Client, clusterName s
 		return fmt.Errorf("unable to tar file: %v", err)
 	}
 
-	if err = internal.CopyToContainers(ctx, hostClient, containers, archiveFile.Name(), "/"); err != nil {
+	if err = internal.CopyToContainers(ctx, hostClient, containers, jobs, archiveFile.Name(), "/"); err != nil {
 		return fmt.Errorf("unable to copy content to containers: %v", err)
 	}
 
@@ -55,6 +55,7 @@ func PushImageFile(ctx context.Context, hostClient *docker.Client, clusterName s
 		ctx,
 		hostClient,
 		containers,
+		jobs,
 		[]string{
 			"docker",
 			"load",

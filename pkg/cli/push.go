@@ -21,12 +21,14 @@ var (
 	}
 
 	filePath string
+	jobs     int
 )
 
 func init() {
 	rootCmd.AddCommand(pushCmd)
 
 	pushCmd.Flags().StringVarP(&filePath, "file", "f", "", "Path to an image archive.")
+	pushCmd.Flags().IntVarP(&jobs, "jobs", "j", 1, "How many pushes in parallel (0 means auto).")
 }
 
 func runPush(cmd *cobra.Command, args []string) {
@@ -61,7 +63,7 @@ func runPush(cmd *cobra.Command, args []string) {
 
 	disgo.StartStepf("Pushing images %q to cluster %q", args, clusterName)
 
-	if err = sind.PushImageRefs(ctx, client, clusterInfo.Name, args); err != nil {
+	if err = sind.PushImageRefs(ctx, client, clusterInfo.Name, jobs, args); err != nil {
 		fail(disgo.FailStepf("Unable to push images %q to %q: %v", args, clusterName, err))
 	}
 
@@ -78,7 +80,7 @@ func pushFile(ctx context.Context, client *docker.Client, clusterName string, fi
 	}
 	defer file.Close()
 
-	if err = sind.PushImageFile(ctx, client, clusterName, file); err != nil {
+	if err = sind.PushImageFile(ctx, client, clusterName, jobs, file); err != nil {
 		fail(disgo.FailStepf("Unable to push image archive %q to %q: %v", filePath, clusterName, err))
 	}
 
