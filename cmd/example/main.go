@@ -38,6 +38,7 @@ func main() {
 	defer func() {
 		deleteCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
+
 		if err = sind.DeleteCluster(deleteCtx, client, params.ClusterName); err != nil {
 			log.Fatalf("unable to delete the cluster:  %v", err)
 		}

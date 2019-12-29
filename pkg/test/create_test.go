@@ -61,6 +61,7 @@ func TestSindCanCreateMultipleClusters(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		t.Log("Creating cluster n°", i)
+
 		params := sind.ClusterConfiguration{
 			ClusterName: fmt.Sprintf("test_create_parallel_%d", i),
 			NetworkName: fmt.Sprintf("test_create_parallel_%d", i),

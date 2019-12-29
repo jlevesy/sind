@@ -28,13 +28,16 @@ func TestSindCanPushAnImageToClusterFromRefs(t *testing.T) {
 		Managers: 1,
 		Workers:  2,
 	}
+
 	require.NoError(t, sind.CreateCluster(ctx, hostClient, params))
+
 	defer func() {
 		require.NoError(t, sind.DeleteCluster(ctx, hostClient, params.ClusterName))
 	}()
 
 	out, err := hostClient.ImagePull(ctx, tag, types.ImagePullOptions{})
 	require.NoError(t, err)
+
 	defer out.Close()
 
 	_, err = io.Copy(ioutil.Discard, out)

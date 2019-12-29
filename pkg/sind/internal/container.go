@@ -71,8 +71,10 @@ type containerRemover interface {
 // RemoveContainers removes all given containers concurrently.
 func RemoveContainers(ctx context.Context, hostClient containerRemover, containers []types.Container) error {
 	errg, groupCtx := errgroup.WithContext(ctx)
+
 	for _, container := range containers {
 		cid := container.ID
+
 		errg.Go(func() error {
 			return hostClient.ContainerRemove(groupCtx,
 				cid,
@@ -101,6 +103,7 @@ func StartContainers(ctx context.Context, hostClient containerStarter, container
 
 	for _, container := range containers {
 		cID := container.ID
+
 		errg.Go(func() error {
 			return hostClient.ContainerStart(groupCtx, cID, types.ContainerStartOptions{})
 		})
@@ -123,6 +126,7 @@ func StopContainers(ctx context.Context, hostClient containerStopper, containers
 
 	for _, container := range containers {
 		cID := container.ID
+
 		errg.Go(func() error {
 			return hostClient.ContainerStop(groupCtx, cID, nil)
 		})
@@ -142,8 +146,10 @@ type containerContentCopier interface {
 // CopyToContainers copy content at path to given containers.
 func CopyToContainers(ctx context.Context, hostClient containerContentCopier, containers []types.Container, contentPath, destPath string) error {
 	errg, groupCtx := errgroup.WithContext(ctx)
+
 	for _, container := range containers {
 		cID := container.ID
+
 		errg.Go(func() error {
 			file, err := os.Open(contentPath)
 			if err != nil {
@@ -175,8 +181,10 @@ type executor interface {
 // ExecContainers execute given command to given containers
 func ExecContainers(ctx context.Context, hostClient executor, containers []types.Container, cmd []string) error {
 	errg, groupCtx := errgroup.WithContext(ctx)
+
 	for _, container := range containers {
 		cID := container.ID
+
 		errg.Go(func() error {
 			return execContainer(groupCtx, hostClient, cID, cmd)
 		})

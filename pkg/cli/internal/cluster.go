@@ -15,6 +15,7 @@ import (
 func RenderCluster(out io.Writer, cluster sind.ClusterStatus) {
 	wr := tabwriter.NewWriter(out, 4, 8, 2, '\t', 0)
 	defer wr.Flush()
+
 	fmt.Fprintf(
 		wr,
 		"Name: %s\tStatus: %s\tManagers: %s\t Workers: %s\t\n",
@@ -23,8 +24,10 @@ func RenderCluster(out io.Writer, cluster sind.ClusterStatus) {
 		style.Important(fmt.Sprintf("%d/%d", cluster.ManagersRunning, cluster.Managers)),
 		style.Important(fmt.Sprintf("%d/%d", cluster.WorkersRunning, cluster.Workers)),
 	)
+
 	fmt.Fprintf(wr, "ID\tImage\tRole\tStatus\tIPs\t\n")
 	fmt.Fprintf(wr, "--\t-----\t----\t------\t---\t\n")
+
 	for _, node := range cluster.Nodes {
 		fmt.Fprintf(
 			wr,

@@ -118,7 +118,6 @@ func TestNetworkList(t *testing.T) {
 			ctx := context.Background()
 			var sentOpts types.NetworkListOptions
 			client := networkListerMock(func(ctx context.Context, opts types.NetworkListOptions) ([]types.NetworkResource, error) {
-
 				sentOpts = opts
 				return test.networks, test.listError
 			})
@@ -163,7 +162,9 @@ func TestDeleteNetwork(t *testing.T) {
 
 	// assert that all the networks returned are removed.
 	close(networkRemoved)
+
 	var removedNetworks []string
+
 	for netID := range networkRemoved {
 		removedNetworks = append(removedNetworks, netID)
 	}

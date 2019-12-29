@@ -37,12 +37,14 @@ func runPush(cmd *cobra.Command, args []string) {
 	defer cancel()
 
 	disgo.StartStep("Connecting to the docker daemon")
+
 	client, err := docker.NewClientWithOpts(internal.DefaultDockerOpts...)
 	if err != nil {
 		fail(disgo.FailStepf("Unable to connect to the docker daemon: %v", err))
 	}
 
 	disgo.StartStepf("Checking if a cluster named %q already exists", clusterName)
+
 	clusterInfo, err := sind.InspectCluster(ctx, client, clusterName)
 	if err != nil {
 		fail(disgo.FailStepf("Unable to check if the cluster already exists: %v", err))
@@ -58,15 +60,18 @@ func runPush(cmd *cobra.Command, args []string) {
 	}
 
 	disgo.StartStepf("Pushing images %q to cluster %q", args, clusterName)
+
 	if err = sind.PushImageRefs(ctx, client, clusterInfo.Name, args); err != nil {
 		fail(disgo.FailStepf("Unable to push images %q to %q: %v", args, clusterName, err))
 	}
+
 	disgo.EndStep()
 	disgo.Infof("%s Successfully pushed images %q to cluster %q\n", style.Success(style.SymbolCheck), args, clusterName)
 }
 
 func pushFile(ctx context.Context, client *docker.Client, clusterName string, filePath string) {
 	disgo.StartStepf("Pushing image archive at %q to cluster %q", filePath, clusterName)
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		fail(disgo.FailStepf("Unable to open file %q: %v", filePath, err))
@@ -76,6 +81,7 @@ func pushFile(ctx context.Context, client *docker.Client, clusterName string, fi
 	if err = sind.PushImageFile(ctx, client, clusterName, file); err != nil {
 		fail(disgo.FailStepf("Unable to push image archive %q to %q: %v", filePath, clusterName, err))
 	}
+
 	disgo.EndStep()
 	disgo.Infof("%s Successfully pushed images archive %q to cluster %q\n", style.Success(style.SymbolCheck), filePath, clusterName)
 }

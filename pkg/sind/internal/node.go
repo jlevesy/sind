@@ -62,6 +62,7 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 	// Create the primary node.
 	primaryIndex := managerIndex
 	primaryIPSuffix := nodeIPIdentifier
+
 	errg.Go(func() error {
 		nodeName := fmt.Sprintf("sind-%s-manager-%d", cfg.ClusterName, primaryIndex)
 		cID, err := runContainer(
@@ -118,6 +119,7 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 	for ; managerIndex < cfg.Managers; managerIndex++ {
 		idx := managerIndex
 		ipSuffix := nodeIPIdentifier
+
 		errg.Go(func() error {
 			nodeName := fmt.Sprintf("sind-%s-manager-%d", cfg.ClusterName, idx)
 			cID, err := runContainer(
@@ -166,6 +168,7 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 	for ; workerIndex < cfg.Workers; workerIndex++ {
 		idx := workerIndex
 		ipSuffix := nodeIPIdentifier
+
 		errg.Go(func() error {
 			nodeName := fmt.Sprintf("sind-%s-worker-%d", cfg.ClusterName, idx)
 			cID, err := runContainer(

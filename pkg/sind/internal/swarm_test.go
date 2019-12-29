@@ -189,7 +189,6 @@ func TestFormCluster(t *testing.T) {
 				},
 				e.Cmd,
 			)
-
 		}
 	}
 

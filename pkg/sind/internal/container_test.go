@@ -45,7 +45,6 @@ func TestListPrimaryContainers(t *testing.T) {
 			ctx := context.Background()
 			var sentOpts types.ContainerListOptions
 			client := ContainerListerMock(func(ctx context.Context, opts types.ContainerListOptions) ([]types.Container, error) {
-
 				sentOpts = opts
 				return test.containers, test.listError
 			})
@@ -60,14 +59,15 @@ func TestListPrimaryContainers(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, test.containers, res)
 			assert.True(t, sentOpts.Filters.ExactMatch(ClusterNameLabel, clusterName))
-
 		})
 	}
 }
 
 func TestListContainers(t *testing.T) {
 	ctx := context.Background()
+
 	var sentOpts types.ContainerListOptions
+
 	clusterName := "supercluster"
 	containers := []types.Container{
 		{ID: "foo"},
@@ -432,6 +432,7 @@ func TestCopyToContainers(t *testing.T) {
 	sort.Slice(sentContent, func(i, j int) bool { return sentContent[i].cID < sentContent[j].cID })
 
 	assert.Len(t, sentContent, len(containers))
+
 	for index, content := range sentContent {
 		assert.Equal(t, containers[index].ID, content.cID)
 		assert.Equal(t, destPath, content.path)

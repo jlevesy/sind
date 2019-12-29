@@ -67,6 +67,7 @@ func SaveImages(ctx context.Context, hostClient imageSaver, dest io.WriteSeeker,
 	defer imgReader.Close()
 
 	var bytes int64
+
 	if bytes, err = io.Copy(dest, imgReader); err != nil {
 		return fmt.Errorf("unable to save the images (copied %d): %v", bytes, err)
 	}
