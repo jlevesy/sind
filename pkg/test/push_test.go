@@ -43,7 +43,7 @@ func TestSindCanPushAnImageToClusterFromRefs(t *testing.T) {
 	_, err = io.Copy(ioutil.Discard, out)
 	require.NoError(t, err)
 
-	require.NoError(t, sind.PushImageRefs(ctx, hostClient, params.ClusterName, []string{tag}))
+	require.NoError(t, sind.PushImageRefs(ctx, hostClient, params.ClusterName, 1, []string{tag}))
 
 	swarmHost, err := sind.ClusterHost(ctx, hostClient, params.ClusterName)
 	require.NoError(t, err)

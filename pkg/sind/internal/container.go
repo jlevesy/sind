@@ -144,30 +144,63 @@ type containerContentCopier interface {
 }
 
 // CopyToContainers copy content at path to given containers.
-func CopyToContainers(ctx context.Context, hostClient containerContentCopier, containers []types.Container, contentPath, destPath string) error {
+func CopyToContainers(ctx context.Context, hostClient containerContentCopier, containers []types.Container, jobs int, contentPath, destPath string) error {
+	if jobs == 0 {
+		jobs = len(containers)
+	}
+
+	in := make(chan string, len(containers))
+
 	errg, groupCtx := errgroup.WithContext(ctx)
 
-	for _, container := range containers {
-		cID := container.ID
-
+	for i := 0; i < jobs; i++ {
 		errg.Go(func() error {
-			file, err := os.Open(contentPath)
-			if err != nil {
-				return fmt.Errorf("unable to open content: %v", err)
+			for {
+				select {
+				case <-groupCtx.Done():
+					return groupCtx.Err()
+				case cID, ok := <-in:
+					if !ok {
+						return nil
+					}
+
+					if err := copyToContainer(groupCtx, hostClient, cID, contentPath, destPath); err != nil {
+						return err
+					}
+				}
 			}
-
-			defer file.Close()
-
-			if err := hostClient.CopyToContainer(groupCtx, cID, destPath, file, types.CopyToContainerOptions{}); err != nil {
-				return fmt.Errorf("unable to copy the content to container %q: %v", cID, err)
-			}
-
-			return nil
 		})
 	}
 
+	for _, container := range containers {
+		in <- container.ID
+	}
+
+	close(in)
+
 	if err := errg.Wait(); err != nil {
 		return fmt.Errorf("unable to deploy the image to host: %v", err)
+	}
+
+	return nil
+}
+
+func copyToContainer(ctx context.Context, hostClient containerContentCopier, cID, contentPath, destPath string) error {
+	file, err := os.Open(contentPath)
+	if err != nil {
+		return fmt.Errorf("unable to open content: %v", err)
+	}
+	defer file.Close()
+
+	err = hostClient.CopyToContainer(
+		ctx,
+		cID,
+		destPath,
+		file,
+		types.CopyToContainerOptions{},
+	)
+	if err != nil {
+		return fmt.Errorf("unable to copy the content to container %q: %v", cID, err)
 	}
 
 	return nil
@@ -179,16 +212,38 @@ type executor interface {
 }
 
 // ExecContainers execute given command to given containers
-func ExecContainers(ctx context.Context, hostClient executor, containers []types.Container, cmd []string) error {
+func ExecContainers(ctx context.Context, hostClient executor, containers []types.Container, jobs int, cmd []string) error {
+	if jobs == 0 {
+		jobs = len(containers)
+	}
+
+	in := make(chan string, len(containers))
+
 	errg, groupCtx := errgroup.WithContext(ctx)
 
-	for _, container := range containers {
-		cID := container.ID
-
+	for i := 0; i < jobs; i++ {
 		errg.Go(func() error {
-			return execContainer(groupCtx, hostClient, cID, cmd)
+			for {
+				select {
+				case <-groupCtx.Done():
+					return groupCtx.Err()
+				case cID, ok := <-in:
+					if !ok {
+						return nil
+					}
+					if err := execContainer(groupCtx, hostClient, cID, cmd); err != nil {
+						return err
+					}
+				}
+			}
 		})
 	}
+
+	for _, container := range containers {
+		in <- container.ID
+	}
+
+	close(in)
 
 	if err := errg.Wait(); err != nil {
 		return fmt.Errorf("unable to exec command %v: %v", cmd, err)

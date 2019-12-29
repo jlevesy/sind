@@ -420,7 +420,7 @@ func TestCopyToContainers(t *testing.T) {
 		return nil
 	})
 
-	require.NoError(t, CopyToContainers(ctx, client, containers, fileContent.Name(), destPath))
+	require.NoError(t, CopyToContainers(ctx, client, containers, 2, fileContent.Name(), destPath))
 
 	close(contentSent)
 
@@ -487,7 +487,7 @@ func TestExecContainers(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, ExecContainers(ctx, &client, containers, cmd))
+	require.NoError(t, ExecContainers(ctx, &client, containers, 2, cmd))
 
 	close(execCreated)
 	close(execStarted)
