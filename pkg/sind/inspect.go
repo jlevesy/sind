@@ -43,6 +43,7 @@ func InspectCluster(ctx context.Context, hostClient internal.ContainerLister, cl
 		if role == internal.NodeRoleManager ||
 			role == internal.NodeRolePrimary {
 			result.Managers++
+
 			if node.State == "running" {
 				result.ManagersRunning++
 			}
@@ -51,6 +52,7 @@ func InspectCluster(ctx context.Context, hostClient internal.ContainerLister, cl
 		}
 
 		result.Workers++
+
 		if node.State == "running" {
 			result.WorkersRunning++
 		}
