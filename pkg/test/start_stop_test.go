@@ -15,7 +15,7 @@ import (
 func TestSindCanStopAndStartACluster(t *testing.T) {
 	ctx := context.Background()
 
-	hostClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
+	hostClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
 	require.NoError(t, err)
 
 	params := sind.ClusterConfiguration{
@@ -52,7 +52,7 @@ func TestSindCanStopAndStartACluster(t *testing.T) {
 	swarmHost, err := sind.ClusterHost(ctx, hostClient, params.ClusterName)
 	require.NoError(t, err)
 
-	swarmClient, err := docker.NewClientWithOpts(docker.WithHost(swarmHost), docker.WithVersion("1.39"))
+	swarmClient, err := docker.NewClientWithOpts(docker.WithHost(swarmHost), docker.WithAPIVersionNegotiation())
 	require.NoError(t, err)
 
 	var info types.Info

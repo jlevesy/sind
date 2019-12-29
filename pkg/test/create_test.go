@@ -14,7 +14,7 @@ import (
 func TestSindCanCreateACluster(t *testing.T) {
 	ctx := context.Background()
 
-	hostClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
+	hostClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
 	require.NoError(t, err)
 
 	params := sind.ClusterConfiguration{
@@ -33,7 +33,7 @@ func TestSindCanCreateACluster(t *testing.T) {
 	swarmHost, err := sind.ClusterHost(ctx, hostClient, params.ClusterName)
 	require.NoError(t, err)
 
-	swarmClient, err := docker.NewClientWithOpts(docker.WithHost(swarmHost), docker.WithVersion("1.39"))
+	swarmClient, err := docker.NewClientWithOpts(docker.WithHost(swarmHost), docker.WithAPIVersionNegotiation())
 	require.NoError(t, err)
 
 	info, err := swarmClient.Info(ctx)
@@ -56,7 +56,7 @@ func TestSindCanCreateACluster(t *testing.T) {
 
 func TestSindCanCreateMultipleClusters(t *testing.T) {
 	ctx := context.Background()
-	hostClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
+	hostClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
 	require.NoError(t, err)
 
 	for i := 0; i < 3; i++ {

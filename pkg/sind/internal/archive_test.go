@@ -2,7 +2,6 @@ package internal
 
 import (
 	"archive/tar"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -53,7 +52,6 @@ func TestTarFile(t *testing.T) {
 	if _, err := io.Copy(os.Stdout, tr); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println()
 
 	_, err = tr.Next()
 	assert.Equal(t, io.EOF, err)

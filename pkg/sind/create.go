@@ -121,7 +121,7 @@ func CreateCluster(ctx context.Context, hostClient *docker.Client, params Cluste
 
 	swarmClient, err := docker.NewClientWithOpts(
 		docker.WithHost("tcp://"+net.JoinHostPort(swarmHost, fmt.Sprintf("%d", swarmPort))),
-		docker.WithVersion("1.39"),
+		docker.WithAPIVersionNegotiation(),
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create swarm client: %v", err)

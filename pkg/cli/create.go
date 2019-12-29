@@ -46,7 +46,7 @@ func runCreate(cmd *cobra.Command, args []string) {
 	defer cancel()
 
 	disgo.StartStep("Connecting to the docker daemon")
-	client, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion("1.39"))
+	client, err := docker.NewClientWithOpts(internal.DefaultDockerOpts...)
 	if err != nil {
 		fail(disgo.FailStepf("Unable to connect to the docker daemon: %v", err))
 	}
