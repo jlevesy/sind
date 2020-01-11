@@ -45,7 +45,9 @@ func CreateNetwork(ctx context.Context, client networkCreator, cfg NetworkConfig
 		ctx,
 		cfg.Name,
 		types.NetworkCreate{
+			Driver: "bridge",
 			IPAM: &network.IPAM{
+				Driver: "default",
 				Config: []network.IPAMConfig{
 					{Subnet: cfg.Subnet},
 				},
