@@ -31,7 +31,9 @@ func TestCreateNetwork(t *testing.T) {
 			Subnet:      "10.0.117.0/24",
 		},
 		expectedOpts: types.NetworkCreate{
+			Driver: "bridge",
 			IPAM: &network.IPAM{
+				Driver: "default",
 				Config: []network.IPAMConfig{
 					{Subnet: "10.0.117.0/24"},
 				},
@@ -50,7 +52,9 @@ func TestCreateNetwork(t *testing.T) {
 				Subnet:      "10.0.117.0/24",
 			},
 			expectedOpts: types.NetworkCreate{
+				Driver: "bridge",
 				IPAM: &network.IPAM{
+					Driver: "default",
 					Config: []network.IPAMConfig{
 						{Subnet: "10.0.117.0/24"},
 					},
