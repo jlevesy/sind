@@ -24,6 +24,8 @@ type NodesConfig struct {
 
 	Managers uint16
 	Workers  uint16
+
+	DaemonArgs []string
 }
 
 // NodeIDs carries the IDs of various nodes in the cluster.
@@ -77,10 +79,10 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 					ClusterNameLabel: cfg.ClusterName,
 					NodeRoleLabel:    NodeRolePrimary,
 				},
-				Cmd: []string{
+				Cmd: append([]string{
 					"-H unix:///var/run/docker.sock",
 					"-H tcp://0.0.0.0:2375",
-				},
+				}, cfg.DaemonArgs...),
 			},
 			&container.HostConfig{
 				Privileged:      true,
@@ -133,6 +135,7 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 						ClusterNameLabel: cfg.ClusterName,
 						NodeRoleLabel:    NodeRoleManager,
 					},
+					Cmd: cfg.DaemonArgs,
 				},
 				&container.HostConfig{Privileged: true},
 				&network.NetworkingConfig{
@@ -182,6 +185,7 @@ func CreateNodes(ctx context.Context, docker nodeCreator, cfg NodesConfig) (*Nod
 						ClusterNameLabel: cfg.ClusterName,
 						NodeRoleLabel:    NodeRoleWorker,
 					},
+					Cmd: cfg.DaemonArgs,
 				},
 				&container.HostConfig{Privileged: true},
 				&network.NetworkingConfig{

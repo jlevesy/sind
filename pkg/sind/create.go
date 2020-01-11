@@ -27,6 +27,7 @@ type ClusterConfiguration struct {
 	ImageName    string
 	PullImage    bool
 	PortBindings []string
+	DaemonArgs   []string
 }
 
 func (n *ClusterConfiguration) validate() error {
@@ -97,6 +98,8 @@ func CreateCluster(ctx context.Context, hostClient *docker.Client, params Cluste
 
 		Managers: params.Managers,
 		Workers:  params.Workers,
+
+		DaemonArgs: params.DaemonArgs,
 	}
 
 	nodecIDs, err := internal.CreateNodes(ctx, hostClient, nodesCfg)
