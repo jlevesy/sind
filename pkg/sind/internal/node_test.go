@@ -58,6 +58,7 @@ func TestCreateNodes(t *testing.T) {
 		PortBindings: []string{"8080:8080"},
 		Managers:     3,
 		Workers:      3,
+		DaemonArgs:   []string{"--fake-arg"},
 	}
 
 	containerCreated := make(chan *fakeContainer, cfg.Managers+cfg.Workers)
@@ -121,7 +122,7 @@ func TestCreateNodes(t *testing.T) {
 			Image:        cfg.ImageRef,
 			ExposedPorts: nat.PortSet(map[nat.Port]struct{}{nat.Port("8080/tcp"): {}}),
 			Entrypoint:   []string{"dockerd"},
-			Cmd:          []string{"-H unix:///var/run/docker.sock", "-H tcp://0.0.0.0:2375"},
+			Cmd:          []string{"-H unix:///var/run/docker.sock", "-H tcp://0.0.0.0:2375", "--fake-arg"},
 			Labels: map[string]string{
 				"com.sind.cluster.name": "TestCluster",
 				"com.sind.cluster.role": "primary",
@@ -173,6 +174,7 @@ func TestCreateNodes(t *testing.T) {
 					"com.sind.cluster.name": "TestCluster",
 					"com.sind.cluster.role": "manager",
 				},
+				Cmd: []string{"--fake-arg"},
 			},
 			c.cConfig,
 		)
@@ -213,6 +215,7 @@ func TestCreateNodes(t *testing.T) {
 					"com.sind.cluster.name": "TestCluster",
 					"com.sind.cluster.role": "worker",
 				},
+				Cmd: []string{"--fake-arg"},
 			},
 			c.cConfig,
 		)
