@@ -1,3 +1,4 @@
+---
 project_name: sind
 builds:
   - main: ./cmd/sind/main.go
@@ -5,14 +6,14 @@ builds:
     ldflags:
       - -s -w -X "github.com/jlevesy/sind/pkg/cli.version={{ .Version }}"
     env:
-    - CGO_ENABLED=0
-archive:
-  replacements:
-    darwin: Darwin
-    linux: Linux
-    windows: Windows
-    386: i386
-    amd64: x86_64
+      - CGO_ENABLED=0
+archives:
+  - replacements:
+      darwin: Darwin
+      linux: Linux
+      windows: Windows
+      386: i386
+      amd64: x86_64
 checksum:
   name_template: 'checksums.txt'
 snapshot:
@@ -21,5 +22,5 @@ changelog:
   sort: asc
   filters:
     exclude:
-    - '^docs:'
-    - '^test:'
+      - '^docs:'
+      - '^test:'
