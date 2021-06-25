@@ -57,7 +57,7 @@ func TestSindCanStopAndStartACluster(t *testing.T) {
 
 	var info types.Info
 
-	require.NoError(t, retry(10, time.Second, func() error { info, err = swarmClient.Info(ctx); return err }))
+	require.NoError(t, retry(30, time.Second, func() error { info, err = swarmClient.Info(ctx); return err }))
 
 	require.True(t, info.Swarm.ControlAvailable)
 
