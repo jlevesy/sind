@@ -1,0 +1,98 @@
+name: ci
+on:
+  push:
+    branches:
+      - 'main'
+    tags:
+      - v*
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  unit_test:
+    name: Run Unit Tests
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16.x
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Cache Modules
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run Unit tests
+        run: make unit_test
+  integration_test:
+    name: Run Integration Tests
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16.x
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Cache Modules
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run Integration tests
+        run: make integration_test
+  lint:
+    name: Run Linter
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16.x
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Run Linter
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: v1.41.1
+          args: -c .golangci.yml
+          skip-go-installation: true
+  release:
+    name: Release
+    runs-on: ubuntu-20.04
+    if: startsWith(github.ref, 'refs/tags/')
+    needs:
+      - unit_test
+      - integration_test
+      - lint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16.x
+      - name: Cache Modules
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Releaser
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          version: v0.171.0
+          args: release --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

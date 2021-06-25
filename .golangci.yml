@@ -28,6 +28,23 @@ linters:
     - gochecknoinits
     - gochecknoglobals
     - funlen
+    - gocritic
+    - gofumpt
+    - goerr113
+    - exhaustivestruct
+    - exportloopref
+    - gomnd
+    - paralleltest
+    - testpackage
+    - wrapcheck
+    - errorlint
+    - gomoddirectives
+    - godot
+    - staticcheck
+    - nlreturn
+    - forbidigo
+    - revive
+    - cyclop
 
 issues:
   exclude-rules:
